@@ -11,6 +11,37 @@ const {
   getById,
 } = require("../controllers/submissions.controller");
 
+// ── Nonsense / gibberish detectors (server-side guard) ────────────
+function looksJunkName(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return false; // emptiness handled by required checks
+  const compact = s.replace(/\s+/g, "");
+  const letters = (compact.match(/[a-zA-Z]/g) || []).length;
+  if (letters < 2) return true;
+  if (/^(.)\1+$/.test(compact)) return true;               // xxxx, aaaa
+  const uniq = new Set(compact.toLowerCase()).size;
+  if (compact.length >= 8 && uniq <= 2) return true;       // asdasdasd
+  const vowels = (compact.match(/[aeiouAEIOU]/g) || []).length;
+  if (letters >= 10 && vowels / letters < 0.1) return true; // keyboard mash
+  return false;
+}
+
+function looksGibberishText(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return true;
+  const compact = s.replace(/\s+/g, "");
+  if (/^(.)\1+$/.test(compact)) return true;               // SSSS…
+  const uniq = new Set(compact.toLowerCase()).size;
+  if (compact.length >= 12 && uniq <= 3) return true;
+  const words = s.match(/[a-zA-Z]{2,}/g) || [];
+  if (words.length < 3) return true;
+  const letters = (s.match(/[a-zA-Z]/g) || []).length;
+  const vowels = (s.match(/[aeiouAEIOU]/g) || []).length;
+  if (letters >= 12 && vowels / letters < 0.15) return true;
+  if (compact.length >= 15 && !/\s/.test(s) && uniq / compact.length < 0.3) return true;
+  return false;
+}
+
 const router = Router();
 
 // ── UUID format check (reused across routes) ──────────────────────
@@ -26,21 +57,28 @@ function validateUuidParam(req, res, next) {
 // ── Schemas ────────────────────────────────────────────────────────
 
 const createSchema = z.object({
-  name: z.string().trim().min(1, "name is required"),
-  email: z.string().trim().email("Invalid email address"),
+  name: z.string().trim().min(1, "name is required")
+    .refine((v) => !looksJunkName(v), "Please enter a valid name."),
+  email: z.string().trim().email("Invalid email address")
+    .refine((v) => !/\.\./.test(v), "Invalid email address")
+    .refine((v) => !/^[.\-]|[.\-]@|@[.\-]|[.\-]$/.test(v), "Invalid email address"),
   phone: z.string().trim().optional(),
   phoneFull: z.string().trim().optional(),
   countryCode: z.string().trim().optional(),
-  organization: z.string().trim().optional(),
+  organization: z.string().trim().optional()
+    .refine((v) => !v || !looksJunkName(v), "Please enter a valid organization name."),
   role: z.string().trim().optional(),
   website: z.string().trim().optional(),
   linkedin: z.string().trim().optional(),
   teamSize: z.string().trim().optional(),
-  productName: z.string().trim().optional(),
+  productName: z.string().trim().optional()
+    .refine((v) => !v || !looksJunkName(v), "Please enter a valid product name."),
   businessType: z.string().trim().optional(),
   sector: z.string().trim().optional(),
   geography: z.string().trim().optional(),
-  problem: z.string().trim().optional(),
+  problem: z.string().trim().optional()
+    .refine((v) => !v || v.length >= 20, "Problem must be at least 20 characters.")
+    .refine((v) => !v || !looksGibberishText(v), "Nonsensical or test input detected in problem description."),
   stage: z.string().trim().optional(),
 }).passthrough();
 

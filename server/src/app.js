@@ -1,6 +1,7 @@
 // server/src/app.js
 // Express application — wires all middleware and routes.
 
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -44,9 +45,15 @@ app.use("/api/analysis", analysisRoutes);
 app.use("/api/submissions", submissionsRoutes);
 app.use("/api/reports", reportsRoutes);
 
-// ── 404 for unmatched routes ──────────────────────────────────────
-app.use((_req, res) => {
-  res.status(404).json({ error: "Not found" });
+// ── Serve frontend static assets ──────────────────────────────────
+app.use(express.static(path.join(__dirname, "../../dist")));
+
+// ── Fallback handler for client routing (non-API routes) ──────────
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API route not found" });
+  }
+  res.sendFile(path.join(__dirname, "../../dist/index.html"));
 });
 
 // ── Centralized error handler (must be last) ──────────────────────

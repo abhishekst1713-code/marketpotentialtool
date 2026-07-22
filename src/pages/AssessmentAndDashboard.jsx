@@ -146,6 +146,8 @@ export default function AssessmentAndDashboard({ userData, submissionId, onResul
       if (dataUrl && dataUrl.length > 100) {
         console.log("📸 Dashboard screenshot captured, length:", dataUrl.length, "chars");
         onScreenshot(dataUrl);
+        // Screenshot saved → nudge the user toward the full report
+        postToIframe({ type: "INFOPACE_SHOW_REPORT_TIP" });
       } else {
         console.warn("⚠️ Screenshot capture produced empty result");
       }
