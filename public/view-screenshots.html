@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Infopace — Saved Screenshots Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid #334155;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header .sub { font-size: 13px; color: #64748b; margin-top: 4px; }
+    .header .count {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .header .count span { color: #38bdf8; font-weight: 700; font-size: 18px; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px; }
+
+    .loading {
+      text-align: center;
+      padding: 80px 20px;
+      color: #64748b;
+      font-size: 16px;
+    }
+    .loading .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #1e293b;
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty {
+      text-align: center;
+      padding: 80px 20px;
+      color: #475569;
+    }
+    .empty .icon { font-size: 48px; margin-bottom: 16px; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #475569; }
+
+    .card-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #334155;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .card-header .info { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    .card-header .name { font-weight: 600; font-size: 15px; color: #f1f5f9; }
+    .card-header .org { font-size: 13px; color: #64748b; }
+    .card-header .email { font-size: 12px; color: #475569; }
+    .card-header .date { font-size: 12px; color: #475569; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge.complete { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge.pending  { background: rgba(234,179,8,0.15); color: #facc15; border: 1px solid rgba(234,179,8,0.3); }
+
+    .card-body { padding: 16px 20px; }
+    .card-body img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .card-body img:hover { transform: scale(1.01); }
+
+    .no-screenshot {
+      padding: 40px 20px;
+      text-align: center;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    .actions {
+      padding: 12px 20px;
+      border-top: 1px solid #334155;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .btn {
+      padding: 7px 16px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:hover { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+    .btn.primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+    .btn.primary:hover { background: #2563eb; }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,0.92);
+      justify-content: center;
+      align-items: center;
+      cursor: zoom-out;
+    }
+    .lightbox.active { display: flex; }
+    .lightbox img {
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .lightbox .close {
+      position: absolute;
+      top: 16px;
+      right: 24px;
+      font-size: 28px;
+      color: #94a3b8;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .lightbox .close:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>📸 Saved Screenshots Viewer</h1>
+      <div class="sub">View dashboard screenshots stored in Supabase</div>
+    </div>
+    <div class="count" id="countBadge"><span>—</span> submissions</div>
+  </div>
+
+  <div class="container" id="content">
+    <div class="loading">
+      <div class="spinner"></div>
+      Loading submissions from Supabase…
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="close" onclick="closeLightbox()">&times;</button>
+    <img id="lightboxImg" src="" alt="Screenshot"/>
+  </div>
+
+<script>
+  const SUPABASE_URL  = "https://ptncbweomagroosudqmf.supabase.co";
+  const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0bmNid2VvbWFncm9vc3VkcW1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MzM1MjgsImV4cCI6MjA5MDAwOTUyOH0.CKdzxHzh5INOXGRgDo8jwsfd9BIgIo3EXUARzkKai88";
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function loadSubmissions() {
+    const { data, error } = await sb
+      .from("submissions")
+      .select("id, name, email, organization, screenshot_url, status, created_at, overall_score, grade")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      document.getElementById("content").innerHTML =
+        '<div class="empty"><div class="icon">❌</div><div>Error: ' + error.message + '</div></div>';
+      return;
+    }
+
+    document.getElementById("countBadge").innerHTML =
+      '<span>' + data.length + '</span> submissions';
+
+    if (!data.length) {
+      document.getElementById("content").innerHTML =
+        '<div class="empty"><div class="icon">📭</div><div>No submissions found</div></div>';
+      return;
+    }
+
+    let html = "";
+    data.forEach(r => {
+      const date = new Date(r.created_at).toLocaleString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit"
+      });
+
+      const hasScreenshot = r.screenshot_url && r.screenshot_url.length > 100;
+      const statusBadge = r.status === "assessment_complete"
+        ? '<span class="badge complete">✓ Complete</span>'
+        : '<span class="badge pending">Pending</span>';
+
+      const scoreInfo = r.overall_score != null
+        ? ' · <strong>' + r.overall_score + '/100</strong> (' + (r.grade || "—") + ')'
+        : '';
+
+      html += '<div class="card">';
+      html += '  <div class="card-header">';
+      html += '    <div class="info">';
+      html += '      <span class="name">' + (r.name || "—") + '</span>';
+      html += '      <span class="org">' + (r.organization || "—") + '</span>';
+      html += '      <span class="email">' + (r.email || "") + '</span>';
+      html += '      <span class="date">' + date + scoreInfo + '</span>';
+      html += '    </div>';
+      html += '    ' + statusBadge;
+      html += '  </div>';
+
+      if (hasScreenshot) {
+        html += '  <div class="card-body">';
+        html += '    <img src="' + r.screenshot_url + '" alt="Dashboard screenshot" onclick="openLightbox(this.src)"/>';
+        html += '  </div>';
+        html += '  <div class="actions">';
+        html += '    <button class="btn" onclick="openLightbox(\'' + r.id + '_img\')">🔍 Full Size</button>';
+        html += '    <button class="btn primary" onclick="downloadImg(\'' + r.id + '\', \'' + (r.name || 'screenshot') + '\')">⬇ Download PNG</button>';
+        html += '  </div>';
+      } else {
+        html += '  <div class="no-screenshot">No screenshot saved for this submission</div>';
+      }
+
+      html += '</div>';
+    });
+
+    document.getElementById("content").innerHTML = html;
+  }
+
+  function openLightbox(src) {
+    // If it's an ID reference, find the img element
+    if (!src.startsWith("data:")) {
+      const idRef = src.replace("_img", "");
+      const cards = document.querySelectorAll(".card-body img");
+      for (const img of cards) {
+        if (img.src && img.src.length > 100) {
+          src = img.src;
+          break;
+        }
+      }
+    }
+    document.getElementById("lightboxImg").src = src;
+    document.getElementById("lightbox").classList.add("active");
+  }
+
+  function closeLightbox() {
+    document.getElementById("lightbox").classList.remove("active");
+    document.getElementById("lightboxImg").src = "";
+  }
+
+  function downloadImg(id, name) {
+    const imgs = document.querySelectorAll(".card-body img");
+    for (const img of imgs) {
+      if (img.src && img.src.startsWith("data:image")) {
+        const a = document.createElement("a");
+        a.href = img.src;
+        a.download = name.replace(/\s+/g, "_") + "_dashboard.png";
+        a.click();
+        return;
+      }
+    }
+  }
+
+  // Escape key closes lightbox
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeLightbox();
+  });
+
+  loadSubmissions();
+</script>
+</body>
+</html>

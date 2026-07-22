@@ -1,0 +1,59 @@
+# ── Dependencies ──
+node_modules/
+server/node_modules/
+.pnp
+.pnp.js
+
+# ── Environment / secrets ──
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+*.pem
+*.key
+
+# ── Build output ──
+dist/
+dist-ssr/
+build/
+server/dist/
+*.local
+
+# ── Vite ──
+.vite/
+
+# ── Logs ──
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Runtime / cache ──
+.cache/
+.temp/
+.tmp/
+coverage/
+*.tsbuildinfo
+
+# ── Editor / OS ──
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Misc ──
+*.tgz
+.eslintcache
+project_export.txt
+
+project_export.txt
