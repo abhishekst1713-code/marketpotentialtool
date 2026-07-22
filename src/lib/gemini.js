@@ -6,7 +6,7 @@
  * The client only sends userData + answers; it never touches the raw prompt.
  */
 export async function generateAnalysis(userData, answers = {}) {
-  const resp = await fetch("/api/analysis", {
+  const resp = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/analysis`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userData, answers }),

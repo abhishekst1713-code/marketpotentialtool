@@ -2,7 +2,7 @@
 // All database operations now go through the Express backend.
 // No direct Supabase access from the browser for the submissions table.
 
-const API_BASE = "/api/submissions";
+const API_BASE = `${import.meta.env.VITE_API_URL || ""}/api/submissions`;
 
 // ── Phase 1: Save onboarding form immediately after submit ────────
 export async function saveOnboarding(userData) {
