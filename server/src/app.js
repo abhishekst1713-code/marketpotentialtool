@@ -23,10 +23,14 @@ const app = express();
 // ── Security headers ───────────────────────────────────────────────
 app.use(helmet());
 
-// ── CORS — restricted to the configured origin ────────────────────
+// ── CORS — restricted to the configured origins ───────────────────
+const allowedOrigins = env.CORS_ORIGIN
+  ? env.CORS_ORIGIN.split(",").map((o) => o.trim())
+  : [];
+
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
     methods: ["GET", "POST", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
   })
