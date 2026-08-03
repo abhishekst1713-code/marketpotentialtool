@@ -2,7 +2,8 @@
 // All database operations now go through the Express backend.
 // No direct Supabase access from the browser for the submissions table.
 
-const API_BASE = `${import.meta.env.VITE_API_URL || ""}/api/submissions`;
+const SERVER_BASE = import.meta.env.VITE_API_URL || "";
+const API_BASE = `${SERVER_BASE}/api/submissions`;
 
 // ── Phase 1: Save onboarding form immediately after submit ────────
 export async function saveOnboarding(userData) {
@@ -84,7 +85,7 @@ export async function saveSubmission({ userData, answers, result }) {
 
 // ── Report unlock — captures lead email, returns full analysis ────
 export async function unlockReport(submissionId, email, name) {
-  const resp = await fetch("/api/reports/unlock", {
+  const resp = await fetch(`${SERVER_BASE}/api/reports/unlock`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ submissionId, email, name }),
@@ -101,7 +102,7 @@ export async function unlockReport(submissionId, email, name) {
 // ── Payment: create a Razorpay order for a submission ─────────────
 // Returns: { orderId, amount, currency, keyId }
 export async function createRazorpayOrder(submissionId, amountPaise) {
-  const resp = await fetch("/api/payments/create-order", {
+  const resp = await fetch(`${SERVER_BASE}/api/payments/create-order`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ submissionId, amount: amountPaise, currency: "INR" }),
