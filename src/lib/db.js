@@ -97,3 +97,33 @@ export async function unlockReport(submissionId, email, name) {
 
   return resp.json(); // { analysis }
 }
+
+// ── Payment: create a Razorpay order for a submission ─────────────
+// Returns: { orderId, amount, currency, keyId }
+export async function createRazorpayOrder(submissionId, amountPaise) {
+  const resp = await fetch("/api/payments/create-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ submissionId, amount: amountPaise, currency: "INR" }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `Order creation failed (${resp.status})`);
+  }
+
+  return resp.json(); // { orderId, amount, currency, keyId }
+}
+
+// ── Fetch a submission row by UUID ────────────────────────────────
+// Used to re-hydrate 'paid' state from the DB after a page refresh.
+export async function fetchSubmission(submissionId) {
+  if (!submissionId) return null;
+  try {
+    const resp = await fetch(`${API_BASE}/${submissionId}`);
+    if (!resp.ok) return null;
+    return resp.json(); // full submission row including `paid`
+  } catch {
+    return null;
+  }
+}

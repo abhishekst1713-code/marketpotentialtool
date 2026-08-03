@@ -269,6 +269,50 @@ async function insertReportAccess(submissionId, email, name, bucketPath) {
   return { id: data.id };
 }
 
+/**
+ * Persist the Razorpay order ID on a submission row immediately after order creation.
+ * Called before the checkout modal is opened so the order ID is never lost.
+ * @param {string} id - Submission UUID
+ * @param {string} orderId - Razorpay order ID (e.g. "order_...")
+ */
+async function saveRazorpayOrderId(id, orderId) {
+  const { error } = await supabase
+    .from("submissions")
+    .update({ razorpay_order_id: orderId })
+    .eq("id", id);
+
+  if (error) {
+    // Non-fatal — log and continue; payment can still proceed
+    console.error(`[payment] Failed to save razorpay_order_id for ${id}:`, error.message);
+  }
+}
+
+/**
+ * Mark a submission as paid after successful server-side signature verification.
+ * @param {string} id - Submission UUID
+ * @param {string} orderId - Razorpay order ID
+ * @param {string} paymentId - Razorpay payment ID
+ */
+async function markSubmissionPaid(id, orderId, paymentId) {
+  const { error } = await supabase
+    .from("submissions")
+    .update({
+      paid: true,
+      razorpay_order_id: orderId,
+      razorpay_payment_id: paymentId,
+      status: "paid",
+    })
+    .eq("id", id);
+
+  if (error) {
+    const err = new Error(`Failed to mark submission as paid: ${error.message}`);
+    err.statusCode = 500;
+    throw err;
+  }
+
+  console.log(`  💰 Submission ${id} marked as PAID (payment: ${paymentId})`);
+}
+
 module.exports = {
   insertSubmission,
   updateSubmissionResult,
@@ -276,4 +320,6 @@ module.exports = {
   getSubmissionById,
   uploadReportToStorage,
   insertReportAccess,
+  saveRazorpayOrderId,
+  markSubmissionPaid,
 };

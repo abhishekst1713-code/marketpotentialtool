@@ -5061,10 +5061,13 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
         return;
       }
 
-      // Data is available — build the report directly
+      // Data is available — build report if unlocked, else show gate
       try {
-        window._unlocked = true;
-        buildReport();
+        if (window._unlocked) {
+          buildReport();
+        } else {
+          showReportGate();
+        }
       } catch (err) {
         reportEl.innerHTML = `
           <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f0f4ff;padding:40px 20px;text-align:center;">
@@ -6610,8 +6613,8 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
         if (assess) assess.style.display = 'none';
         if (loader) loader.style.display = 'none';
 
-        // Always render full dashboard directly (no gating)
-        window._unlocked = false;
+        // Set unlocked state based on paid status sent from parent
+        window._unlocked = Boolean(event.data.paid);
         delete window._gatedFd;
         const finalAnalysis = (analysis && typeof analysis === 'object' && Object.keys(analysis).length > 0)
           ? analysis : offlineAnalysis(fd);
@@ -6619,6 +6622,17 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
 
         if (window.parent && window.parent !== window) {
           window.parent.postMessage({ type: 'INFOPACE_READY' }, '*');
+        }
+      }
+
+      // Receive paid status updates dynamically
+      if (event.data.type === 'INFOPACE_PAID_STATUS') {
+        window._unlocked = Boolean(event.data.paid);
+        if (window._unlocked) {
+          const vr = document.getElementById('viewReport');
+          if (vr && vr.style.display !== 'none') {
+            buildReport();
+          }
         }
       }
 
@@ -6801,18 +6815,21 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
             ${rows}
           </div>
           <button onclick="unlockFullReport()" style="width:100%;background:#1144a0;color:#fff;border:none;padding:16px;border-radius:8px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(17,68,160,0.3);margin-bottom:12px;">
-            📊 Request Full Report Access
+            🔓 Unlock Full Report & Downloads — ₹1
           </button>
           <button onclick="switchView('charts')" style="width:100%;background:#fff;border:1px solid rgba(17,68,160,0.14);color:#6080a0;padding:15px;border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:20px;">
             ← Back to Dashboard
           </button>
-          <div style="font-size:12px;color:#94a3b8;">Our team typically responds within 24 hours.</div>
+          <div style="font-size:12px;color:#94a3b8;">Pay ₹1 to unlock full PDF export and report access instantly.</div>
         </div>`;
     }
 
     function unlockFullReport() {
-      window._unlocked = true;
-      buildReport();
+      if (window._unlocked) {
+        buildReport();
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'INFOPACE_EXPORT_PDF' }, '*');
+      }
     }
     /* ══════════════════════════════════════════════════════
        CORPORATE INTELLIGENCE REPORT — v4 Final

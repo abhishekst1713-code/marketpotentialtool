@@ -24,6 +24,22 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
   RATE_LIMIT_MAX: z.coerce.number().default(20),
+
+  // ── Razorpay ────────────────────────────────────────────────────
+  RAZORPAY_KEY_ID: z
+    .string({ required_error: "RAZORPAY_KEY_ID is required" })
+    .min(1, "RAZORPAY_KEY_ID must not be empty"),
+  RAZORPAY_KEY_SECRET: z
+    .string({ required_error: "RAZORPAY_KEY_SECRET is required" })
+    .min(1, "RAZORPAY_KEY_SECRET must not be empty"),
+
+  // ── Redirect URLs ───────────────────────────────────────────────
+  // Public URL of this app — used to redirect back after payment
+  FRONTEND_URL: z.string().url().default("http://localhost:5173"),
+  // Full base URL of the external Payment Hub (including query string prefix)
+  PAYMENT_HUB_URL: z
+    .string()
+    .default("https://payment-t1ag.onrender.com/?app_id=cofit"),
 });
 
 let env;

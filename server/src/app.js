@@ -15,6 +15,8 @@ const healthRoutes = require("./routes/health.routes");
 const analysisRoutes = require("./routes/analysis.routes");
 const submissionsRoutes = require("./routes/submissions.routes");
 const reportsRoutes = require("./routes/reports.routes");
+const paymentRoutes = require("./routes/payment.routes");
+const { paymentStatus } = require("./controllers/payment.controller");
 
 const app = express();
 
@@ -39,11 +41,17 @@ app.use(requestLogger);
 // ── Global rate limiter ───────────────────────────────────────────
 app.use(globalLimiter);
 
-// ── Routes ────────────────────────────────────────────────────────
+// ── Routes ────────────────────────────────────────────────────────────────
 app.use("/api/health", healthRoutes);
 app.use("/api/analysis", analysisRoutes);
 app.use("/api/submissions", submissionsRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/payments", paymentRoutes);
+
+// ── Payment Hub callback — top-level, NOT under /api/ ─────────────────────
+// The Payment Hub redirects the browser here after displaying the receipt.
+// Must be registered before the static-file catch-all below.
+app.get("/payment-status", paymentStatus);
 
 // ── Serve frontend static assets ──────────────────────────────────
 app.use(express.static(path.join(__dirname, "../../dist")));

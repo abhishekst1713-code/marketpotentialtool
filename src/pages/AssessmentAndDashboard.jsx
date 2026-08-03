@@ -1,7 +1,8 @@
 // src/pages/AssessmentAndDashboard.jsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateAnalysis } from "../lib/gemini";
 import { exportPdf } from "../lib/exportPdf";
+import { createRazorpayOrder } from "../lib/db";
 
 // ── Load html2canvas from CDN once ─────────────────────────────────
 function loadHtml2Canvas() {
@@ -11,6 +12,18 @@ function loadHtml2Canvas() {
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
     script.onload = () => resolve(window.html2canvas);
     script.onerror = () => reject(new Error("html2canvas failed to load"));
+    document.head.appendChild(script);
+  });
+}
+
+// ── Load Razorpay checkout script from CDN once ─────────────────────
+function loadRazorpayScript() {
+  return new Promise((resolve, reject) => {
+    if (window.Razorpay) { resolve(window.Razorpay); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(window.Razorpay);
+    script.onerror = () => reject(new Error("Razorpay checkout script failed to load"));
     document.head.appendChild(script);
   });
 }
@@ -61,11 +74,22 @@ const LOADER_STEPS = [
 
 // ── onResult(answers, result) is called by App.jsx to save to Supabase
 // ── onScreenshot(blob) is called by App.jsx to upload the dashboard image
-export default function AssessmentAndDashboard({ userData, submissionId, onResult, onScreenshot, onRestart }) {
+// ── onPaymentSuccess() is called optimistically when Razorpay handler fires
+export default function AssessmentAndDashboard({
+  userData,
+  submissionId,
+  paid,
+  onResult,
+  onScreenshot,
+  onPaymentSuccess,
+  onRestart,
+}) {
   const iframeRef = useRef(null);
   const prefillSentRef = useRef(false);
   const latestResultRef = useRef(null);
   const latestFdRef = useRef(null);
+  const [payLoading, setPayLoading] = useState(false);
+  const [analysisReady, setAnalysisReady] = useState(false);
 
   function postToIframe(msg) {
     iframeRef.current?.contentWindow?.postMessage(msg, "*");
@@ -89,8 +113,11 @@ export default function AssessmentAndDashboard({ userData, submissionId, onResul
         onResult(fd.answers || {}, result);
       }
 
-      // ── Send full analysis to iframe directly (no gating) ──
-      postToIframe({ type: "INFOPACE_RENDER", fd, analysis: result });
+      // ── Send full analysis to iframe directly with paid status ──
+      postToIframe({ type: "INFOPACE_RENDER", fd, analysis: result, paid });
+
+      // ── Mark analysis as ready so the Pay Now button appears ──
+      setAnalysisReady(true);
 
       // ── Capture screenshot after dashboard renders (with delay for animations) ──
       captureAndUpload();
@@ -106,7 +133,8 @@ export default function AssessmentAndDashboard({ userData, submissionId, onResul
       }
 
       setTimeout(() => {
-        postToIframe({ type: "INFOPACE_RENDER", fd, analysis: null });
+        postToIframe({ type: "INFOPACE_RENDER", fd, analysis: null, paid });
+        setAnalysisReady(true); // also show Pay button for offline analysis
         // Capture screenshot even for offline analysis
         captureAndUpload();
       }, 600);
@@ -157,6 +185,86 @@ export default function AssessmentAndDashboard({ userData, submissionId, onResul
   }
 
 
+  // ── Launch Razorpay Checkout Modal ──────────────────────────────
+  // AMOUNT: 100 paise = ₹1.00 for test checkout (Razorpay & UPI minimum limit)
+  const PAYMENT_AMOUNT_PAISE = 100;
+
+  // Whenever paid status changes, sync it into the iframe
+  useEffect(() => {
+    postToIframe({ type: "INFOPACE_PAID_STATUS", paid: paid });
+  }, [paid]);
+
+  async function launchRazorpay() {
+    if (!submissionId) {
+      console.warn("launchRazorpay: submissionId not yet available");
+      return;
+    }
+    setPayLoading(true);
+    try {
+      // 1. Load the Razorpay checkout SDK
+      const RazorpayConstructor = await loadRazorpayScript();
+
+      // 2. Create an order on the backend
+      const { orderId, amount, currency, keyId } = await createRazorpayOrder(
+        submissionId,
+        PAYMENT_AMOUNT_PAISE
+      );
+
+      // 3. Payment Hub base URL — must end with an existing query param
+      //    so we can safely append more params with '&'.
+      const PAYMENT_HUB_BASE = import.meta.env.VITE_PAYMENT_HUB_URL ||
+        "https://payment-t1ag.onrender.com/?app_id=cofit";
+
+      // 4. Open modal — NO callback_url / callback_method.
+      //    The handler function runs in *our* window context so
+      //    window.top.location.href works across the iframe boundary.
+      const rzp = new RazorpayConstructor({
+        key: keyId,
+        amount,
+        currency,
+        order_id: orderId,
+        name: "Market Potential Tool",
+        description: "Unlock Report & Downloads (₹1 Test)",
+        prefill: {
+          name: userData?.name || "",
+          email: userData?.email || "",
+          contact: userData?.phoneFull || userData?.phone || "",
+        },
+        theme: { color: "#6366f1" },
+
+        // ── Client-side success handler ──────────────────────────────
+        // Constructs the Payment Hub URL with payment params and redirects
+        // the TOP-LEVEL window (bypasses cross-origin iframe restrictions).
+        handler: function (response) {
+          const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = response;
+
+          // Optimistic local update
+          if (onPaymentSuccess) onPaymentSuccess();
+
+          // Build Payment Hub redirect URL
+          const redirectUrl =
+            `${PAYMENT_HUB_BASE}` +
+            `&razorpay_payment_id=${encodeURIComponent(razorpay_payment_id)}` +
+            `&razorpay_order_id=${encodeURIComponent(razorpay_order_id)}` +
+            `&razorpay_signature=${encodeURIComponent(razorpay_signature)}` +
+            `&session=${encodeURIComponent(submissionId)}`;
+
+          // Use window.top so this works even when called from within an iframe context
+          window.top.location.href = redirectUrl;
+        },
+
+        modal: {
+          ondismiss: () => setPayLoading(false),
+        },
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error("Razorpay launch failed:", err.message);
+      setPayLoading(false);
+    }
+  }
+
   useEffect(() => {
     function handleMessage(event) {
       if (!event.data) return;
@@ -183,9 +291,13 @@ export default function AssessmentAndDashboard({ userData, submissionId, onResul
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [userData, submissionId]);
+  }, [userData, submissionId, paid]);
 
   function handleExportPdf() {
+    if (!paid) {
+      launchRazorpay();
+      return;
+    }
     exportPdf({
       userData,
       answers: latestFdRef.current?.answers || {},
@@ -195,18 +307,76 @@ export default function AssessmentAndDashboard({ userData, submissionId, onResul
   }
 
   return (
-    <iframe
-      ref={iframeRef}
-      src="/dashboard.html"
-      onLoad={() => {
-        if (!prefillSentRef.current) {
-          prefillSentRef.current = true;
-          postToIframe({ type: "INFOPACE_PREFILL", userData: buildPrefill(userData) });
-        }
-      }}
-      style={{ position: "fixed", inset: 0, border: "none", width: "100%", height: "100%" }}
-      title="Infopace Assessment"
-      sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"
-    />
+    <div style={{ position: "fixed", inset: 0 }}>
+      <iframe
+        ref={iframeRef}
+        src="/dashboard.html"
+        onLoad={() => {
+          if (!prefillSentRef.current) {
+            prefillSentRef.current = true;
+            postToIframe({ type: "INFOPACE_PREFILL", userData: buildPrefill(userData) });
+          }
+        }}
+        style={{ position: "absolute", inset: 0, border: "none", width: "100%", height: "100%" }}
+        title="Infopace Assessment"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"
+      />
+
+      {/* ── Pay Now button — shown after analysis loads, hidden once paid ── */}
+      {analysisReady && !paid && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
+            zIndex: 9999,
+          }}
+        >
+          <button
+            id="btn-pay-now"
+            onClick={launchRazorpay}
+            disabled={payLoading}
+            style={{
+              padding: "14px 28px",
+              borderRadius: "12px",
+              background: payLoading
+                ? "#a5b4fc"
+                : "linear-gradient(135deg, #6366f1 0%, #818cf8 100%)",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: "15px",
+              border: "none",
+              cursor: payLoading ? "not-allowed" : "pointer",
+              boxShadow: "0 4px 20px rgba(99,102,241,0.45)",
+              transition: "all 0.2s ease",
+              letterSpacing: "0.3px",
+            }}
+          >
+            {payLoading ? "Opening checkout…" : "🔓 Unlock Report & Downloads — ₹1"}
+          </button>
+        </div>
+      )}
+
+      {/* ── Paid badge — shown once payment is verified ── */}
+      {paid && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
+            zIndex: 9999,
+            padding: "10px 20px",
+            borderRadius: "12px",
+            background: "linear-gradient(135deg, #10b981 0%, #34d399 100%)",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: "14px",
+            boxShadow: "0 4px 16px rgba(16,185,129,0.4)",
+          }}
+        >
+          ✅ Full Report Unlocked
+        </div>
+      )}
+    </div>
   );
 }
