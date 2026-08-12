@@ -26,12 +26,15 @@ WHAT THE FOUNDER TOLD US ABOUT THEIR MARKET:
 ${answerLines || "(answers not provided)"}
 
 CRITICAL INSTRUCTIONS:
-1. Use your REAL knowledge of the ${userData.sector} market in ${userData.geography} — cite real TAM figures, real CAGR rates
-2. Name REAL competitors that actually exist in ${userData.sector} in ${userData.geography} — not placeholders
-3. Score those competitors based on your actual knowledge of their market position
-4. Revenue by region must reflect real market concentration for ${userData.sector} in ${userData.geography}
-5. The overall score must genuinely reflect the founder's answers above
-6. TAM/SAM/SOM must be realistic for this specific sector and geography
+1. Use your REAL knowledge of the ${userData.sector} market in ${userData.geography} — cite real TAM figures, real CAGR rates.
+2. Name REAL competitors that actually exist in ${userData.sector} in ${userData.geography} — not placeholders.
+3. Score those competitors based on your actual knowledge of their market position.
+4. Revenue by region must reflect real market concentration for ${userData.sector} in ${userData.geography}.
+5. The overall score must genuinely reflect the founder's answers above.
+6. TAM/SAM/SOM must be realistic for this specific sector and geography.
+7. Every single score, insight, claim, and recommendation in the generated report must be strictly traceable to and justified by a specific fact about THIS business (its actual category, region, competitors, price point, stage, and problem description) — do not output generic filler text that could describe any business.
+8. Every dimension description and recommendation MUST be highly customized to their specific sector, stage, and target geography.
+9. Name at least 3 REAL, existing local or global competitors that compete with them, citing their actual funding stage, market shares, strengths, and weaknesses.
 
 Return ONLY raw JSON, no markdown fences, no explanation before or after:
 {

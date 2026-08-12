@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { generateAnalysis } from "../lib/gemini";
 import { exportPdf } from "../lib/exportPdf";
-import { createRazorpayOrder } from "../lib/db";
+import { createRazorpayOrder, fetchSubmission } from "../lib/db";
 
 // ── Load html2canvas from CDN once ─────────────────────────────────
 function loadHtml2Canvas() {
@@ -114,7 +114,7 @@ export default function AssessmentAndDashboard({
       }
 
       // ── Send full analysis to iframe directly with paid status ──
-      postToIframe({ type: "INFOPACE_RENDER", fd, analysis: result, paid });
+      postToIframe({ type: "INFOPACE_RENDER", fd, analysis: result, paid: paid });
 
       // ── Mark analysis as ready so the Pay Now button appears ──
       setAnalysisReady(true);
@@ -133,7 +133,7 @@ export default function AssessmentAndDashboard({
       }
 
       setTimeout(() => {
-        postToIframe({ type: "INFOPACE_RENDER", fd, analysis: null, paid });
+        postToIframe({ type: "INFOPACE_RENDER", fd, analysis: null, paid: paid });
         setAnalysisReady(true); // also show Pay button for offline analysis
         // Capture screenshot even for offline analysis
         captureAndUpload();
@@ -174,8 +174,9 @@ export default function AssessmentAndDashboard({
       if (dataUrl && dataUrl.length > 100) {
         console.log("📸 Dashboard screenshot captured, length:", dataUrl.length, "chars");
         onScreenshot(dataUrl);
-        // Screenshot saved → nudge the user toward the full report
+        // Screenshot saved → nudge the user toward the full report and send charts capture
         postToIframe({ type: "INFOPACE_SHOW_REPORT_TIP" });
+        postToIframe({ type: "INFOPACE_CHARTS_CAPTURE", chartImageSrc: dataUrl });
       } else {
         console.warn("⚠️ Screenshot capture produced empty result");
       }
@@ -193,6 +194,61 @@ export default function AssessmentAndDashboard({
   useEffect(() => {
     postToIframe({ type: "INFOPACE_PAID_STATUS", paid: paid });
   }, [paid]);
+
+  // Restore session from DB on mount/reload if submissionId is present
+  useEffect(() => {
+    if (!submissionId) return;
+
+    fetchSubmission(submissionId).then((row) => {
+      if (row && row.answers && row.result) {
+        latestFdRef.current = { answers: row.answers };
+        latestResultRef.current = row.result;
+        setAnalysisReady(true);
+
+        postToIframe({
+          type: "INFOPACE_RENDER",
+          fd: { answers: row.answers },
+          analysis: row.result,
+          paid: paid
+        });
+      }
+    });
+  }, [submissionId]);
+
+  async function handleDirectUnlock() {
+    if (!submissionId) {
+      console.warn("handleDirectUnlock: submissionId not yet available");
+      return;
+    }
+    setPayLoading(true);
+    try {
+      const resp = await fetch("/api/payments/test-unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId }),
+      });
+      if (!resp.ok) {
+        throw new Error(`Direct unlock failed: ${resp.statusText}`);
+      }
+
+      // Re-fetch submission details to get fresh paid status from Supabase
+      const row = await fetchSubmission(submissionId);
+      if (row && row.paid) {
+        if (onPaymentSuccess) onPaymentSuccess();
+        postToIframe({ type: "INFOPACE_PAID_STATUS", paid: true });
+        postToIframe({
+          type: "INFOPACE_RENDER",
+          fd: latestFdRef.current || { answers: row.answers },
+          analysis: latestResultRef.current || row.result,
+          paid: true
+        });
+      }
+    } catch (err) {
+      console.error("Direct unlock failed:", err.message);
+    } finally {
+      setPayLoading(false);
+    }
+  }
 
   async function launchRazorpay() {
     if (!submissionId) {
@@ -270,7 +326,14 @@ export default function AssessmentAndDashboard({
       if (!event.data) return;
 
       if (event.data.type === "INFOPACE_LOADED") {
-        if (!prefillSentRef.current) {
+        if (latestFdRef.current && latestResultRef.current) {
+          postToIframe({
+            type: "INFOPACE_RENDER",
+            fd: latestFdRef.current,
+            analysis: latestResultRef.current,
+            paid: paid
+          });
+        } else if (!prefillSentRef.current) {
           prefillSentRef.current = true;
           postToIframe({ type: "INFOPACE_PREFILL", userData: buildPrefill(userData) });
         }
@@ -295,7 +358,7 @@ export default function AssessmentAndDashboard({
 
   function handleExportPdf() {
     if (!paid) {
-      launchRazorpay();
+      handleDirectUnlock();
       return;
     }
     exportPdf({
@@ -310,7 +373,7 @@ export default function AssessmentAndDashboard({
     <div style={{ position: "fixed", inset: 0 }}>
       <iframe
         ref={iframeRef}
-        src="/dashboard.html"
+        src="/dashboard.html?v=1.0.2"
         onLoad={() => {
           if (!prefillSentRef.current) {
             prefillSentRef.current = true;
@@ -334,7 +397,7 @@ export default function AssessmentAndDashboard({
         >
           <button
             id="btn-pay-now"
-            onClick={launchRazorpay}
+            onClick={handleDirectUnlock}
             disabled={payLoading}
             style={{
               padding: "14px 28px",

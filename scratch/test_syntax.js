@@ -17,3 +17,4 @@ while ((match = scriptRegex.exec(html)) !== null) {
     process.exit(1);
   }
 }
+

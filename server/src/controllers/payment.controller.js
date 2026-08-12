@@ -178,4 +178,17 @@ const paymentStatus = asyncHandler(async (req, res) => {
   );
 });
 
-module.exports = { createOrder, paymentStatus };
+// ── POST /api/payments/test-unlock ───────────────────────────────────────────
+const testUnlock = asyncHandler(async (req, res) => {
+  const { submissionId } = req.body;
+  if (!submissionId) {
+    return res.status(400).json({ error: "submissionId is required" });
+  }
+  
+  await markSubmissionPaid(submissionId, "test_order", "test_pay");
+  console.log(`[test-unlock] Submission ${submissionId} successfully unlocked directly`);
+  
+  res.json({ success: true });
+});
+
+module.exports = { createOrder, paymentStatus, testUnlock };

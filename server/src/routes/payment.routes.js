@@ -9,7 +9,7 @@
 const { Router } = require("express");
 const { z } = require("zod");
 const { validate } = require("../middleware/validateRequest");
-const { createOrder, paymentStatus } = require("../controllers/payment.controller");
+const { createOrder, paymentStatus, testUnlock } = require("../controllers/payment.controller");
 
 const router = Router();
 
@@ -30,6 +30,9 @@ const createOrderSchema = z.object({
 
 // POST /api/payments/create-order
 router.post("/create-order", validate(createOrderSchema), createOrder);
+
+// POST /api/payments/test-unlock
+router.post("/test-unlock", testUnlock);
 
 // GET /payment-status
 // This is also exported for mounting at root level in app.js

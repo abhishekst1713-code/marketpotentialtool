@@ -89,60 +89,55 @@ export default function App() {
   const [submissionId, setSubmissionId] = useState(null); // holds Supabase row UUID
   const [paid, setPaid] = useState(false); // true once payment is verified
 
-  // ── On mount: detect ?payment= and ?session= in the URL ──────────
-  // This runs once when the app loads. If the Payment Hub redirected here
-  // with ?payment=success, we hydrate the paid state and clean the URL.
+  // ── On mount: detect ?payment= and ?session= in the URL or restore from localStorage ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentResult = params.get("payment");   // "success" | "failed"
-    const sessionId = params.get("session");       // submission UUID
+    const sessionIdFromUrl = params.get("session"); // submission UUID
 
-    if (!paymentResult) return; // no payment redirect — normal load
+    // Clean URL if we have payment params
+    if (paymentResult) {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    }
 
-    // Strip ?payment=... and ?session=... from the address bar immediately.
-    // This keeps the URL clean and prevents re-triggering on refresh.
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, "", cleanUrl);
+    const sessionId = sessionIdFromUrl || localStorage.getItem("infopace_session_sid");
+    if (!sessionId) return;
 
-    if (paymentResult === "success" && sessionId) {
-      // Re-hydrate session from DB so state is consistent even after a hard
-      // redirect from the Payment Hub (React state was cleared by navigation).
-      fetchSubmission(sessionId).then((row) => {
-        if (row) {
-          // Restore userData from the DB row fields
-          setUserData({
-            name: row.name,
-            email: row.email,
-            phone: row.phone,
-            phoneFull: row.phone_full,
-            countryCode: row.country_code,
-            organization: row.organization,
-            role: row.role,
-            website: row.website,
-            linkedin: row.linkedin,
-            teamSize: row.team_size,
-            productName: row.product_name,
-            businessType: row.business_type,
-            sector: row.sector,
-            geography: row.geography,
-            problem: row.problem,
-            stage: row.stage,
-          });
-          setSubmissionId(sessionId);
-          // Trust the DB flag (server-verified) — also catch race conditions
-          // where the DB update hasn't propagated yet
-          setPaid(row.paid === true || paymentResult === "success");
-        } else {
-          // DB fetch failed but server already verified — trust the redirect
+    fetchSubmission(sessionId).then((row) => {
+      if (row) {
+        // Restore userData from the DB row fields
+        setUserData({
+          name: row.name,
+          email: row.email,
+          phone: row.phone,
+          phoneFull: row.phone_full,
+          countryCode: row.country_code,
+          organization: row.organization,
+          role: row.role,
+          website: row.website,
+          linkedin: row.linkedin,
+          teamSize: row.team_size,
+          productName: row.product_name,
+          businessType: row.business_type,
+          sector: row.sector,
+          geography: row.geography,
+          problem: row.problem,
+          stage: row.stage,
+        });
+        setSubmissionId(sessionId);
+        try {
+          localStorage.setItem("infopace_session_sid", sessionId);
+        } catch (err) {}
+        // Trust the DB flag (server-verified) or URL redirect
+        setPaid(row.paid === true || (sessionIdFromUrl === sessionId && paymentResult === "success"));
+      } else {
+        if (paymentResult === "success") {
           setPaid(true);
           setSubmissionId(sessionId);
         }
-      });
-    } else if (paymentResult === "failed") {
-      // Payment failed — the user stays on the current page.
-      // Optionally surface this to the dashboard via a state flag.
-      console.warn("Payment was not completed or failed verification.");
-    }
+      }
+    });
   }, []); // runs once on mount
 
   // ── Re-hydrate paid flag when submissionId changes (handles refresh) ──
@@ -151,7 +146,9 @@ export default function App() {
   useEffect(() => {
     if (!submissionId) return;
     fetchSubmission(submissionId).then((row) => {
-      if (row?.paid) setPaid(true);
+      if (row) {
+        setPaid(row.paid === true);
+      }
     });
   }, [submissionId]);
 
@@ -162,6 +159,11 @@ export default function App() {
     // Save to Supabase immediately — non-blocking
     const id = await saveOnboarding(formData);
     setSubmissionId(id); // store for phase 2 — triggers re-render so child gets the real id
+    if (id) {
+      try {
+        localStorage.setItem("infopace_session_sid", id);
+      } catch (err) {}
+    }
   }
 
   // ── Called when AI analysis completes inside the dashboard ────────
