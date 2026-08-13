@@ -35,6 +35,7 @@ CRITICAL INSTRUCTIONS:
 7. BANNED: generic filler that could describe any business ("strong growth potential", "significant market opportunity", "well-positioned to succeed"). Every sentence must contain at least one of: a number, a named competitor, a named regulation/scheme, a specific city/region, or a specific mechanism (e.g. "vernacular UI cuts onboarding time" not "better UX").
 8. LENGTH: every "description"/"rationale"/"desc" style field must be 2–3 full sentences (35–60 words) unless the schema says otherwise — not one-liners.
 9. Reuse specific numbers across fields for internal consistency — e.g. if tamCrore is ₹X, the mktshare popup, dimensionAnalysis.marketSize, and swot fields should all be arithmetically consistent with X, not contradict it.
+10. actionPlanDetails must select the 3 dimensions with the LOWEST scores from the "dimensions" object above (3 actions for the weakest, 2 for the second-weakest, 1 for the third) — every action's "why" must reference the specific gap that made that dimension score low, not a generic improvement tip.
 
 Return ONLY raw JSON, no markdown fences, no explanation before or after:
 {
@@ -64,6 +65,20 @@ Return ONLY raw JSON, no markdown fences, no explanation before or after:
   {"force":"Buyer Power","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences on switching costs and buyer concentration>"},
   {"force":"Threat of Substitutes","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences naming the actual substitute/workaround customers use today>"},
   {"force":"Competitive Rivalry","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences on number of funded competitors and how they compete (price/feature/distribution)>"}
+],
+"actionPlanDetails": [
+  {"dimension":"<name of the WEAKEST of the 6 dimensions, exact label e.g. 'Competition Edge'>","score":<its score>,"actions":[
+    {"text":"<specific action, 1-2 sentences>","why":"<1-2 sentences tying it to THIS business's specific gap>","signal":"<1 sentence: a concrete, observable sign it's working>","obstacle":"<1 sentence: the likely blocker>","stuck":"<1 sentence: what to do if blocked>"},
+    {"text":"<action 2>","why":"<why 2>","signal":"<signal 2>","obstacle":"<obstacle 2>","stuck":"<stuck 2>"},
+    {"text":"<action 3>","why":"<why 3>","signal":"<signal 3>","obstacle":"<obstacle 3>","stuck":"<stuck 3>"}
+  ]},
+  {"dimension":"<name of the 2nd-weakest dimension>","score":<its score>,"actions":[
+    {"text":"<action 1>","why":"<why 1>","signal":"<signal 1>","obstacle":"<obstacle 1>","stuck":"<stuck 1>"},
+    {"text":"<action 2>","why":"<why 2>","signal":"<signal 2>","obstacle":"<obstacle 2>","stuck":"<stuck 2>"}
+  ]},
+  {"dimension":"<name of the 3rd-weakest dimension>","score":<its score>,"actions":[
+    {"text":"<action 1>","why":"<why 1>","signal":"<signal 1>","obstacle":"<obstacle 1>","stuck":"<stuck 1>"}
+  ]}
 ],
 "tamCrore": <realistic TAM in ₹Crore>,
 "samCrore": <serviceable portion>,
