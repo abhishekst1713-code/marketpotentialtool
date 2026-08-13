@@ -11,7 +11,7 @@ function buildAnalysisPrompt(userData, answers) {
     .map(([, v]) => `  - ${Array.isArray(v) ? v.join(", ") : v}`)
     .join("\n");
 
-  return `You are a senior market intelligence analyst with deep knowledge of Indian and global markets.
+  return `You are a senior engagement manager in the strategy practice of a Big Four firm (KPMG / Deloitte / EY-Parthenon style), producing a client-ready market diligence memo. Your reader is a founder or an investment committee who will act on this document — it must read like real diligence work product, not a marketing blurb or a generic template. Every claim needs a number, a named entity, or a mechanism behind it.
 
 Analyse this product and produce a data-driven market assessment using your real knowledge of this sector, geography, and companies.
 
@@ -26,31 +26,53 @@ WHAT THE FOUNDER TOLD US ABOUT THEIR MARKET:
 ${answerLines || "(answers not provided)"}
 
 CRITICAL INSTRUCTIONS:
-1. Use your REAL knowledge of the ${userData.sector} market in ${userData.geography} — cite real TAM figures, real CAGR rates.
-2. Name REAL competitors that actually exist in ${userData.sector} in ${userData.geography} — not placeholders.
-3. Score those competitors based on your actual knowledge of their market position.
+1. Use your REAL knowledge of the ${userData.sector} market in ${userData.geography} — cite real TAM figures, real CAGR rates, real regulatory bodies and named regulations where relevant (e.g. RBI/SEBI circulars, CDSCO/NMC rules, DPDP Act, sector-specific licensing).
+2. Name REAL competitors that actually exist in ${userData.sector} in ${userData.geography} — not placeholders. Reuse the same named competitors consistently across every field below (competitorProfiles, marketShare, competitorRadar, trendData, porterForces, dimensionAnalysis) — do not introduce a different competitor set per field.
+3. Score competitors based on your actual knowledge of their market position, funding history, and product.
 4. Revenue by region must reflect real market concentration for ${userData.sector} in ${userData.geography}.
 5. The overall score must genuinely reflect the founder's answers above.
-6. TAM/SAM/SOM must be realistic for this specific sector and geography.
-7. Every single score, insight, claim, and recommendation in the generated report must be strictly traceable to and justified by a specific fact about THIS business (its actual category, region, competitors, price point, stage, and problem description) — do not output generic filler text that could describe any business.
-8. Every dimension description and recommendation MUST be highly customized to their specific sector, stage, and target geography.
-9. Name at least 3 REAL, existing local or global competitors that compete with them, citing their actual funding stage, market shares, strengths, and weaknesses.
+6. TAM/SAM/SOM must be realistic for this specific sector and geography, and internally consistent (SAM ≤ TAM, SOM ≤ SAM).
+7. BANNED: generic filler that could describe any business ("strong growth potential", "significant market opportunity", "well-positioned to succeed"). Every sentence must contain at least one of: a number, a named competitor, a named regulation/scheme, a specific city/region, or a specific mechanism (e.g. "vernacular UI cuts onboarding time" not "better UX").
+8. LENGTH: every "description"/"rationale"/"desc" style field must be 2–3 full sentences (35–60 words) unless the schema says otherwise — not one-liners.
+9. Reuse specific numbers across fields for internal consistency — e.g. if tamCrore is ₹X, the mktshare popup, dimensionAnalysis.marketSize, and swot fields should all be arithmetically consistent with X, not contradict it.
 
 Return ONLY raw JSON, no markdown fences, no explanation before or after:
 {
 "overallScore": <0-100>,
 "grade": "Excellent" or "Strong" or "Moderate" or "Needs Work" or "Critical",
-"verdict": "<One specific sentence naming the product, its key opportunity, and its biggest risk>",
+"verdict": "<2-3 sentences: the product, its single strongest reason to win, and its single biggest risk, each tied to a specific number or competitor>",
 "realTimeInsight": "<One real market fact with actual numbers>",
+"methodology": "<1-2 sentences describing how this assessment was derived — e.g. which sector benchmarks, comparable companies, or public data points were used as reference>",
 "dimensions": {"marketSize":<0-100>,"audienceQuality":<0-100>,"competitionEdge":<0-100>,"revenuePotential":<0-100>,"riskProfile":<0-100>,"sectorFit":<0-100>},
+"dimensionAnalysis": {
+  "marketSize": {"description":"<2-3 sentences on the actual size/growth of THIS sub-segment in ${userData.geography}, with a number>","recommendation":"<1 specific, actionable next step tied to that number>"},
+  "audienceQuality": {"description":"<2-3 sentences on who the real buyer is, their budget authority, and adoption friction, specific to this business>","recommendation":"<1 specific next step>"},
+  "competitionEdge": {"description":"<2-3 sentences naming the actual competitor(s) this business is closest to and the specific gap it exploits or lacks>","recommendation":"<1 specific next step>"},
+  "revenuePotential": {"description":"<2-3 sentences on the monetization model, realistic pricing vs comparable products, and margin structure>","recommendation":"<1 specific next step>"},
+  "riskProfile": {"description":"<2-3 sentences on the specific regulatory, execution, or market-timing risk for this sector/stage, naming the actual regulation or failure mode>","recommendation":"<1 specific next step>"},
+  "sectorFit": {"description":"<2-3 sentences on the structural tailwind or headwind (a named scheme, technology shift, or macro trend) affecting this sector right now>","recommendation":"<1 specific next step>"}
+},
+"swot": {
+  "strengths": ["<specific strength #1, grounded in a number or fact>", "<specific strength #2>", "<specific strength #3>"],
+  "weaknesses": ["<specific weakness #1>", "<specific weakness #2>", "<specific weakness #3>"],
+  "opportunities": ["<specific market/timing opportunity #1, naming a trend, scheme, or gap>", "<opportunity #2>", "<opportunity #3>"],
+  "threats": ["<specific external threat #1, naming a competitor, regulation, or macro risk>", "<threat #2>", "<threat #3>"]
+},
+"porterForces": [
+  {"force":"Threat of New Entrants","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences on actual barriers to entry in this specific sub-sector>"},
+  {"force":"Supplier Power","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences on who the key suppliers/platforms are and their leverage>"},
+  {"force":"Buyer Power","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences on switching costs and buyer concentration>"},
+  {"force":"Threat of Substitutes","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences naming the actual substitute/workaround customers use today>"},
+  {"force":"Competitive Rivalry","intensity":"Low" or "Medium" or "High","rationale":"<1-2 sentences on number of funded competitors and how they compete (price/feature/distribution)>"}
+],
 "tamCrore": <realistic TAM in ₹Crore>,
 "samCrore": <serviceable portion>,
 "somCrore": <3-year realistic target>,
 "growthRate": <real CAGR %>,
 "competitorProfiles": [
-  {"name":"<REAL company 1>","stage":"<funding/size>","strength":"<real strength>","weakness":"<real gap>","marketSharePct":<realistic %>},
-  {"name":"<REAL company 2>","stage":"<funding/size>","strength":"<real strength>","weakness":"<real gap>","marketSharePct":<realistic %>},
-  {"name":"<REAL company 3>","stage":"<funding/size>","strength":"<real strength>","weakness":"<real gap>","marketSharePct":<realistic %>}
+  {"name":"<REAL company 1>","stage":"<funding/size>","strength":"<real strength, 1 full sentence>","weakness":"<real gap, 1 full sentence>","marketSharePct":<realistic %>},
+  {"name":"<REAL company 2>","stage":"<funding/size>","strength":"<real strength, 1 full sentence>","weakness":"<real gap, 1 full sentence>","marketSharePct":<realistic %>},
+  {"name":"<REAL company 3>","stage":"<funding/size>","strength":"<real strength, 1 full sentence>","weakness":"<real gap, 1 full sentence>","marketSharePct":<realistic %>}
 ],
 "marketShare": [
   {"name":"<product>","pct":<1-10>,"val":"₹<somCrore>Cr"},
@@ -87,15 +109,15 @@ Return ONLY raw JSON, no markdown fences, no explanation before or after:
   "Europe": {"rev":"<global sector size>","pct":"<% of global TAM>","ids":[276,250,826,380,724,528,208,752,756,616]},
   "Africa": {"rev":"<global sector size>","pct":"<% of global TAM>","ids":[566,710,404,818,12]}
 },
-"keyInsights": ["<insight 1 with numbers>","<insight 2>","<insight 3>","<insight 4>","<90-day action>"],
-"topRisks": ["<risk 1>","<risk 2>","<risk 3>"],
-"quickWins": ["<win 1>","<win 2>","<win 3>"],
+"keyInsights": ["<insight 1, a full sentence with a number>","<insight 2>","<insight 3>","<insight 4>","<90-day action, a full sentence>"],
+"topRisks": ["<risk 1, 1-2 full sentences naming the actual mechanism>","<risk 2>","<risk 3>"],
+"quickWins": ["<win 1, a specific concrete action with a target metric>","<win 2>","<win 3>"],
 "popups": {
-  "mktshare": "<2 sentences: TAM/SAM/SOM + competitor context>",
-  "revregion": "<2 sentences: priority cities and why>",
-  "radar": "<2 sentences: where product leads and trails>",
-  "trend": "<2 sentences: trajectory and inflection point>",
-  "geomap": "<2 sentences: geographic focus rationale>"
+  "mktshare": "<2-3 sentences: TAM/SAM/SOM + named competitor context>",
+  "revregion": "<2-3 sentences: priority cities and why, with a number>",
+  "radar": "<2-3 sentences: where product leads and trails named competitors>",
+  "trend": "<2-3 sentences: trajectory and inflection point with a month/number>",
+  "geomap": "<2-3 sentences: geographic focus rationale>"
 }
 }`;
 }
