@@ -6,9 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Forwards /api calls to the Node proxy server (server.js on port 4001)
+      // Forwards /api calls to the Express backend (server/src/index.js, port 4000)
       "/api": {
-        target: "http://localhost:4001",
+        target: "http://localhost:4000",
         changeOrigin: true,
       },
     },

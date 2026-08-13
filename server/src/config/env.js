@@ -26,12 +26,12 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().default(20),
 
   // ── Razorpay ────────────────────────────────────────────────────
-  RAZORPAY_KEY_ID: z
-    .string({ required_error: "RAZORPAY_KEY_ID is required" })
-    .min(1, "RAZORPAY_KEY_ID must not be empty"),
-  RAZORPAY_KEY_SECRET: z
-    .string({ required_error: "RAZORPAY_KEY_SECRET is required" })
-    .min(1, "RAZORPAY_KEY_SECRET must not be empty"),
+  // Payment gateway is temporarily disabled (unlock is free/instant), so
+  // these are optional for now. Set them when re-enabling checkout —
+  // create-order/payment-status will still fail without real values, but
+  // the server no longer refuses to boot without them.
+  RAZORPAY_KEY_ID: z.string().default(""),
+  RAZORPAY_KEY_SECRET: z.string().default(""),
 
   // ── Redirect URLs ───────────────────────────────────────────────
   // Public URL of this app — used to redirect back after payment
