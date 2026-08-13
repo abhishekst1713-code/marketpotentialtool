@@ -7201,27 +7201,33 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
   </div>
 
   <!-- PAGE 3: OUR ASSESSMENT SUITE -->
-  <div class="page">
-    ${localPageHeader("03")}
-    <div class="eyebrow">Introduction</div>
-    <div class="pg-title">Our Assessment Suite</div>
-    <div class="pg-sub">A summary of the frameworks and metrics we track across our diagnostic tools.</div>
-    
-    <div style="display:flex; flex-direction:column; gap:6mm; margin-top:5mm;">
-      <div style="margin-bottom:0; padding:4mm; background:var(--b50); border-radius:8px;">
-        <div style="font-weight:700; font-size:14px; color:var(--b900); margin-bottom:2mm;">Creative Innovation Index (CII)</div>
-        <div style="font-size:12px; line-height:1.65; color:var(--ink);">Measures individual and team creative cognitive capacity, divergent thinking, remote association, openness to risk, and daily innovative habits. Used to build capability baselines.</div>
-      </div>
-      <div style="margin-bottom:0; padding:4mm; background:var(--b50); border-radius:8px;">
-        <div style="font-weight:700; font-size:14px; color:var(--b900); margin-bottom:2mm;">Market Potential Index (MPI)</div>
-        <div style="font-size:12px; line-height:1.65; color:var(--ink);">Evaluates early-stage venture concept feasibility, market sizing (TAM/SAM/SOM), target audience quality, competitor density, revenue model viability, and sector fit.</div>
-      </div>
-      <div style="margin-bottom:0; padding:4mm; background:var(--b50); border-radius:8px;">
-        <div style="font-weight:700; font-size:14px; color:var(--b900); margin-bottom:2mm;">Product-Market Fit (PMF) Diagnostic</div>
-        <div style="font-size:12px; line-height:1.65; color:var(--ink);">Tracks post-launch customer retention, Net Promoter Score (NPS), conversion velocities, expansion margins, and payback periods to establish scaling readiness.</div>
-      </div>
+  <div class="wp-page">
+    <div style="position:relative; z-index:1; padding:16mm 16mm 12mm; display:flex; flex-direction:column; min-height:297mm;">
+      ${localPageHeader("03")}
+      <div class="wp-mono" style="font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:#1a56db; font-weight:600; margin-bottom:3mm;">Company Overview</div>
+      <div class="wp-serif" style="font-size:36.8px; font-weight:700; color:#061228; margin-bottom:6mm;">Our Assessment Suite</div>
+
+      <p style="font-size:12.6px; color:#334155; line-height:1.87; margin-bottom:4mm; text-align:left;">Infopace continues to strengthen its portfolio of AI-powered business assessment tools, delivering intelligent, data-driven solutions that help entrepreneurs, startups, and organizations make informed strategic decisions.</p>
+      <p style="font-size:12.6px; color:#334155; line-height:1.87; margin-bottom:8mm; text-align:left;">Each assessment leverages AI to analyze user responses and generate comprehensive reports containing actionable insights, key findings, strengths, improvement areas, and tailored recommendations. The current suite includes the following five tools:</p>
+
+      <div class="wp-mono" style="font-size:10.3px; letter-spacing:.14em; text-transform:uppercase; color:#94a3b8; margin-bottom:2mm;">The Assessment Suite</div>
+      ${[
+        ["#a21caf", "Market Research Assessment", "Validates business ideas by analyzing market demand, customer needs, industry trends, and competition, enabling informed market-entry decisions."],
+        ["#06b6d4", "Market Potential", "Evaluates the growth potential and commercial viability of a product or business by assessing market size, demand, scalability and risk opportunities."],
+        ["#1a56db", "Creative Innovation Index", "Measures innovation capability by assessing creativity, problem-solving and adaptability, assisting individuals and organizations strengthen their innovation potential."],
+        ["#f97316", "Business Risk Assessment", "Identifies strategic, operational, financial and market risks, enabling businesses to proactively mitigate challenges and improve resilience."],
+        ["#f43f5e", "Founder and Co-Founder Compatibility", "Assesses alignment between founders in leadership, communication, values, and decision-making to build stronger partnerships and reduce future conflicts."],
+      ].map(([color, name, desc]) => `
+        <div style="display:flex; gap:5mm; padding:4.5mm 0; border-bottom:1px solid var(--border);">
+          <div style="width:3px; background:${color}; border-radius:2px; flex-shrink:0;"></div>
+          <div>
+            <div style="font-weight:700; font-size:14.4px; color:#0f172a; margin-bottom:1.5mm;">${name}</div>
+            <div style="font-size:11.8px; color:#475569; line-height:1.76;">${desc}</div>
+          </div>
+        </div>`).join("")}
+
+      ${localPageFooter()}
     </div>
-    ${localPageFooter()}
   </div>
 
   <!-- PAGE 4: EXECUTIVE SUMMARY -->
@@ -7822,68 +7828,101 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
     ${localPageFooter()}
   </div>
 
-  <!-- PAGE 15: DISCLAIMER -->
-  <div class="page">
-    ${localPageHeader("15")}
-    <div class="eyebrow">Section Eleven</div>
-    <div class="pg-title">Disclaimer, Privacy &amp; Terms</div>
-    <div class="pg-sub">Legal guidelines, data security rules, and terms of use for this diagnostic tool.</div>
-    
-    <div style="font-size:11px; line-height:1.65; color:var(--ink); display:flex; flex-direction:column; gap:4mm; margin-top:4mm; flex:1;">
-      <p><strong>General Disclaimer:</strong> This diagnostic tool is designed to provide directional insights based on input answers and AI evaluation benchmarks. It does not constitute formal legal, financial, or investment advice. Infopace Management Pvt. Ltd. makes no warranties regarding the accuracy or market outcome of these forecasts.</p>
-      <p><strong>Privacy Policy:</strong> Your submission data, organizational answers, and final dashboard scores are stored securely using Supabase encryption protocols. Personal information will never be shared, sold, or distributed to third parties without your explicit consent.</p>
-      <p><strong>Terms of Use:</strong> This report is licensed solely for the internal strategic planning of the evaluated organization. Unauthorized reproduction, resale, or distribution of this report or the underlying diagnostic frameworks is strictly prohibited.</p>
+  <!-- PAGE 15: DISCLAIMER, PRIVACY AND TERMS -->
+  <div class="wp-page">
+    <div style="position:relative; z-index:1; padding:16mm 16mm 12mm; display:flex; flex-direction:column; min-height:297mm;">
+      ${localPageHeader("15")}
+      <div class="wp-serif" style="font-size:28.7px; font-weight:700; color:#061228; margin-bottom:8mm; white-space:nowrap;">Disclaimer, Privacy and Terms</div>
+
+      <div style="display:flex; gap:5mm; margin-bottom:7mm;">
+        <div style="width:11mm; height:11mm; border-radius:10px; background:#fff7ed; display:flex; align-items:center; justify-content:center; font-size:18.4px; flex-shrink:0;">&#9888;</div>
+        <div>
+          <div class="wp-serif" style="font-size:17.2px; font-weight:700; color:#061228; margin-bottom:2mm;">Disclaimer</div>
+          <div style="font-size:11.7px; color:#334155; line-height:1.78; text-align:left;">
+            <p style="margin-bottom:2mm;">The <b>AI-evaluated assessment report</b> is intended for informational and decision-support purposes only. Results are based on the information provided by the user and AI-driven analysis and should not be considered legal, financial, investment, or professional advice.</p>
+            <p style="margin-bottom:2mm;">Users are encouraged to validate critical decisions with relevant experts before taking action. Infopace makes no representation or warranty as to the completeness or accuracy of AI-evaluated interpretations, and scores should be read as directional indicators rather than absolute measurements.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:5mm; margin-bottom:7mm;">
+        <div style="width:11mm; height:11mm; border-radius:10px; background:#f0fdf4; display:flex; align-items:center; justify-content:center; font-size:18.4px; flex-shrink:0;">&#128274;</div>
+        <div>
+          <div class="wp-serif" style="font-size:17.2px; font-weight:700; color:#061228; margin-bottom:2mm;">Privacy Policy</div>
+          <div style="font-size:11.7px; color:#334155; line-height:1.78; text-align:left;">
+            <p style="margin-bottom:2mm;">All information shared during the assessment is handled with confidentiality and used solely for generating personalized assessment reports and improving the quality of the assessment platform.</p>
+            <p style="margin-bottom:2mm;">User data is processed securely and is not shared with third parties without consent, except where required by applicable law. Individual open-ended responses are never used to train external models or shared outside Infopace's assessment infrastructure.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:5mm; margin-bottom:7mm;">
+        <div style="width:11mm; height:11mm; border-radius:10px; background:#eff6ff; display:flex; align-items:center; justify-content:center; font-size:18.4px; flex-shrink:0;">&#128196;</div>
+        <div>
+          <div class="wp-serif" style="font-size:17.2px; font-weight:700; color:#061228; margin-bottom:2mm;">Terms and Conditions</div>
+          <div style="font-size:11.7px; color:#334155; line-height:1.78; text-align:left;">
+            <p style="margin-bottom:2mm;">By using Infopace's AI-powered assessment tools, users acknowledge that the assessment results are generated based on the information they provide and the AI-driven evaluation methodology. The reports are intended to support decision-making and should not be considered a substitute for professional legal, financial, or business advice.</p>
+            <p style="margin-bottom:2mm;">Users are responsible for ensuring the accuracy of the information submitted and for any decisions or actions taken based on the report. Infopace does not guarantee specific business outcomes or success resulting from the recommendations provided.</p>
+            <p style="margin-bottom:2mm;">All assessment content, methodologies, reports, and related intellectual property remain the exclusive property of Infopace and may not be copied, reproduced, modified, or distributed without prior written consent. Infopace reserves the right to update, modify, or discontinue the assessment tools, methodologies, and these terms at any time without prior notice.</p>
+          </div>
+        </div>
+      </div>
+
+      ${localPageFooter()}
     </div>
-    ${localPageFooter()}
   </div>
 
   <!-- PAGE 16: ABOUT INFOPACE -->
-  <div class="page">
-    ${localPageHeader("16")}
-    <div class="eyebrow">Section Twelve</div>
-    <div class="pg-title">About <span style="color:var(--b500);">Infopace</span></div>
-    <div class="pg-sub">A brief introduction to our team, methodology, and corporate advisory services.</div>
+  <div class="wp-page" style="display:flex; flex-direction:column; padding:0;">
+    <div style="padding:16mm 16mm 4mm;">
+      ${localPageHeader("16")}
+      <div class="wp-serif" style="font-size:34px; font-weight:700; color:#061228; line-height:1.1; margin-bottom:5mm;">About <span style="color:#1a56db;">Infopace</span></div>
 
-    <div style="font-size:11.2px; color:#334155; line-height:1.68;">
-      <p style="margin-bottom:2.5mm;">Infopace Management Pvt. Ltd is a Bengaluru-based strategic change management and business transformation company established in 1999, providing advisory and technology-driven solutions that help businesses improve operational efficiency, accelerate growth and adapt to changing market conditions.</p>
-      <p style="margin-bottom:2.5mm;">Our approach combines deep sector expertise with data-driven methodology — every engagement begins with understanding the specific operational and market context a client is working within, rather than applying a generic playbook. This is the same philosophy behind the AI-powered assessment tools used to generate this report: structured, evidence-based, and built to reflect the individual business, not a template.</p>
-    </div>
+      <div style="font-size:11.2px; color:#334155; line-height:1.68; text-align:left;">
+        <p style="margin-bottom:2.5mm;">Infopace Management Pvt. Ltd is a Bengaluru-based strategic change management and business transformation company established in 1999, providing advisory and technology-driven solutions that help businesses improve operational efficiency, accelerate growth and adapt to changing market conditions.</p>
+        <p style="margin-bottom:2.5mm;">Our approach combines deep sector expertise with data-driven methodology — every engagement begins with understanding the specific operational and market context a client is working within, rather than applying a generic playbook. This is the same philosophy behind the AI-powered assessment tools used to generate this report: structured, evidence-based, and built to reflect the individual business, not a template.</p>
+      </div>
 
-    <div style="margin-top:5mm;">
-      <div class="wp-mono" style="font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin-bottom:2mm;">What We Do</div>
-      <div style="display:flex; gap:8mm;">
-        <div style="flex:1;">
-          ${["Growth Acceleration Partner", "Global Capabilities Center", "Strategic Change Management", "Strategic Investment and Funding", "Data Analytics Solutions", "Digital Transformation"].map(t => `
-            <div style="display:flex; align-items:flex-start; gap:3mm; padding:1.6mm 0;">
-              <div style="width:5px; height:5px; border-radius:50%; background:var(--b500); flex-shrink:0; margin-top:1.5mm;"></div>
-              <div style="font-size:9.8px; color:#334155; line-height:1.4;">${t}</div>
-            </div>`).join("")}
+      <div style="margin-top:5mm;">
+        <div class="wp-mono" style="font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin-bottom:2mm;">What We Do</div>
+        <div style="display:flex; gap:8mm;">
+          <div style="flex:1;">
+            ${["Growth Acceleration Partner", "Global Capabilities Center", "Strategic Change Management", "Strategic Investment and Funding", "Data Analytics Solutions", "Digital Transformation"].map(t => `
+              <div style="display:flex; align-items:flex-start; gap:3mm; padding:1.6mm 0;">
+                <div style="width:5px; height:5px; border-radius:50%; background:#1a56db; flex-shrink:0; margin-top:1.5mm;"></div>
+                <div style="font-size:9.8px; color:#334155; line-height:1.4;">${t}</div>
+              </div>`).join("")}
+          </div>
+          <div style="flex:1;">
+            ${["AI-Enabled Solutions", "Enabling the Entrepreneurial Ecosystem", "Go-To-Market Strategy and Research", "Market Access and Readiness", "Pivoting and Repurposing Businesses", "Radical Innovation"].map(t => `
+              <div style="display:flex; align-items:flex-start; gap:3mm; padding:1.6mm 0;">
+                <div style="width:5px; height:5px; border-radius:50%; background:#1a56db; flex-shrink:0; margin-top:1.5mm;"></div>
+                <div style="font-size:9.8px; color:#334155; line-height:1.4;">${t}</div>
+              </div>`).join("")}
+          </div>
         </div>
-        <div style="flex:1;">
-          ${["AI-Enabled Solutions", "Enabling the Entrepreneurial Ecosystem", "Go-To-Market Strategy and Research", "Market Access and Readiness", "Pivoting and Repurposing Businesses", "Radical Innovation"].map(t => `
-            <div style="display:flex; align-items:flex-start; gap:3mm; padding:1.6mm 0;">
-              <div style="width:5px; height:5px; border-radius:50%; background:var(--b500); flex-shrink:0; margin-top:1.5mm;"></div>
-              <div style="font-size:9.8px; color:#334155; line-height:1.4;">${t}</div>
-            </div>`).join("")}
+      </div>
+
+      <div style="margin-top:5mm;">
+        <div class="wp-mono" style="font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin-bottom:3mm;">Industries We Serve</div>
+        <div>
+          ${["Automobile", "Education", "Health Care", "ITES", "Information Technology", "Manufacturing", "Retail", "Telecom", "Energy", "NGO", "Food Processing", "Agritech", "Aerospace", "Semiconductor", "ESDM"].map(ind => `<span style="display:inline-block; font-size:9.2px; color:#1a56db; background:#eff6ff; border:1px solid #bfdbfe; border-radius:20px; padding:2mm 4mm; margin:0 2mm 2mm 0;">${ind}</span>`).join("")}
         </div>
+      </div>
+
+      <div style="display:flex; gap:4mm; margin-top:5mm;">
+        ${[["200+", "Specialists, avg. 7 years expertise"], ["850+", "Long-lasting client partnerships"], ["7000+", "Projects in digital transformation"]].map(([n, l]) => `
+          <div style="flex:1; border:1px solid var(--border); border-radius:10px; padding:4mm 3mm; text-align:left; background:#f8faff;">
+            <div style="font-weight:800; font-size:25.3px; color:#1a56db;">${n}</div>
+            <div style="font-size:9.2px; color:#64748b; margin-top:1.5mm; line-height:1.54;">${l}</div>
+          </div>`).join("")}
       </div>
     </div>
 
-    <div style="margin-top:5mm;">
-      <div class="wp-mono" style="font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#94a3b8; margin-bottom:3mm;">Industries We Serve</div>
-      <div>
-        ${["Automobile", "Education", "Health Care", "ITES", "Information Technology", "Manufacturing", "Retail", "Telecom", "Energy", "NGO", "Food Processing", "Agritech", "Aerospace", "Semiconductor", "ESDM"].map(ind => `<span style="display:inline-block; font-size:9.2px; color:var(--b500); background:var(--b50); border:1px solid var(--b200); border-radius:20px; padding:2mm 4mm; margin:0 2mm 2mm 0;">${ind}</span>`).join("")}
-      </div>
+    <div style="height:89mm; position:relative; background-image:url('/about-office.png'); background-size:cover; background-position:center 40%;"></div>
+    <div style="padding:5mm 16mm; background:#fff; border-top:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; font-size:9.5px; color:#94a3b8; letter-spacing:.02em;"><div>©2026 Infopace Management Pvt. Ltd. All Rights Reserved.</div><div>AI-Evaluated Report</div></div>
     </div>
-
-    <div style="display:flex; gap:4mm; margin-top:5mm;">
-      ${[["200+", "Specialists, avg. 7 years expertise"], ["850+", "Long-lasting client partnerships"], ["7000+", "Projects in digital transformation"]].map(([n, l]) => `
-        <div style="flex:1; border:1px solid var(--border); border-radius:10px; padding:4mm 3mm; background:var(--b50);">
-          <div style="font-weight:800; font-size:25.3px; color:var(--b500);">${n}</div>
-          <div style="font-size:9.2px; color:var(--inkL); margin-top:1.5mm; line-height:1.54;">${l}</div>
-        </div>`).join("")}
-    </div>
-    ${localPageFooter()}
   </div>
 
   <!-- PAGE 17: THANK YOU / BACK COVER -->
