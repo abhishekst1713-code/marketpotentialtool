@@ -1,0 +1,49 @@
+const fs = require('fs');
+const path = require('path');
+
+const workspaceRoot = 'c:/Users/ADMIN/Downloads/marketpotentialtool';
+const destPath = path.join(workspaceRoot, 'src', 'lib', 'exportPdf.js');
+
+const bodyCode = `
+function generateDetailedExecSummary(org, sector, geography, score, verdict, tam, growth) {
+  return \`
+    <p class="body">This corporate intelligence assessment offers a granular and multi-dimensional analysis of the venture <b>\\\${org}</b> operating within the high-potential <b>\\\${sector}</b> landscape in <b>\\\${geography}</b>. The evaluation, yielding a Market Potential Index (MPI) score of <b>\\\${score}/100</b>, positions the enterprise as a <b>\\\${score >= 75 ? "High Growth Opportunity" : score >= 70 ? "High Potential Disruptor" : score >= 50 ? "Steady Competitor" : "Emerging Innovator"}</b>. This rating underscores a robust underlying alignment with modern target demographics, counterbalanced by distinct execution hurdles and strategic positioning opportunities characteristic of this specific growth stage.</p>
+    <p class="body">Our structural sizing frameworks indicate an addressable opportunity of scale. The broader sector TAM (Total Addressable Market) is evaluated at <b>₹\\\${Math.round(tam)} Crore</b>, exhibiting a strong growth momentum with a CAGR of <b>\\\${growth}%</b>. This market is driven by accelerating structural tailwinds, including digitization of procurement channels, regional expansion of technology-first service layers, and growing customer willingness to pay for premiumized SaaS or product solutions. Consequently, the commercial opportunity represents a solid foundation for early capitalization, provided entry models remain agile.</p>
+    <p class="body">Underlying demand dynamics show a promising combination of audience urgency and willingness to pay. A key findings summary identifies that customer acquisition friction points are primarily tied to legacy process adoption rather than budget caps. However, switching barriers from established competitor suites remain moderate to high. The strategic mandate for the venture is to construct immediate, high-differentiation hooks that lower transition complexity. Capitalizing on these initial touchpoints will be the primary catalyst for rapid revenue expansion and market capture.</p>
+    <p class="body">From an investment readiness standpoint, the venture demonstrates strong product readiness backed by initial validation indicators. Scale readiness remains highly dependent on establishing capital-efficient distribution channels and mitigating risks associated with customer acquisition cost (CAC) inflation. Prospective financial backers should look to the execution of the 90-day execution roadmap as a core proof-of-concept milestone. Demonstrating steady user acquisition velocity over this phase will confirm the viability of the commercial scaling model and validate the underlying growth assumptions.</p>
+  \`;
+}
+
+function generateFinalVerdict(org, sector, score, som) {
+  const isGo = score >= 60;
+  return \`
+    <p class="body">Following a comprehensive, data-driven diagnostic of <b>\\\${org}</b> within the <b>\\\${sector}</b> space, our firm issues a formal <b>\\\${isGo ? "GO (PROCEED WITH TARGETED EXECUTION)" : "PROCEED WITH CAUTION (REASSESS DISTRIBUTION CHANNELS)"}</b> recommendation. Our analytical confidence level stands at <b>\\\${Math.round(score * 0.9 + 10)}%</b>, reflecting the high clarity of local market dynamics and current consumer trends. The venture exhibits sufficient capability to capture its targeted Serviceable Obtainable Market (SOM) of <b>₹\\\${Math.round(som)} Crore</b> within the next three fiscal years, provided that immediate priorities around distribution partnerships and product positioning are met.</p>
+    <p class="body">Market timing is highly optimal, driven by immediate macroeconomic shifts and competitor transition phases. To maximize this opportunity, the management team must focus on structural positioning differentiators that neutralize competitor counter-campaigns. The strategic positioning matrix places the venture in a favorable quadrant where customer experience innovation offsets early-stage capital constraints. Investors should closely monitor CAC-to-LTV ratios during the early phases to confirm distribution scalability.</p>
+    <p class="body">In conclusion, the combination of a validated problem statement, clear customer urgency, and a substantial target market size justifies immediate commercialization efforts. While risks around CAC inflation and competitor reaction are real, the mitigations outlined in our risk matrix provide a playbook for defensive scaling. Executing on this plan in a disciplined manner will unlock the full value potential of the venture and establish a defensible market position.</p>
+  \`;
+}
+
+function createPage(pageNo, eyebrow, title, sub, content) {
+  return \`
+    <div class="page">
+      <div class="pg-hdr">
+        <div class="brand">INFOPACE <span>MARKET EVALUATOR</span></div>
+        <div class="pg-num">\\\${pageNo} / 17</div>
+      </div>
+      <div class="eyebrow">\\\${eyebrow}</div>
+      <div class="pg-title">\\\${title}</div>
+      <div class="pg-sub">\\\${sub}</div>
+      <div style="flex:1;">
+        \\\${content}
+      </div>
+      <div class="pg-ftr">
+        <div>©2026 Infopace Management Pvt. Ltd. All Rights Reserved.</div>
+        <div>Confidential Assessment Report</div>
+      </div>
+    </div>
+  \`;
+}
+`;
+
+fs.writeFileSync(destPath + '.part2', bodyCode);
+console.log("Successfully wrote part2!");

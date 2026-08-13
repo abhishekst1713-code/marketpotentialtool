@@ -221,6 +221,15 @@ export default function AssessmentAndDashboard({
       return;
     }
     setPayLoading(true);
+
+    // Future Razorpay Flow
+    /*
+    const paymentSuccess = await verifyPayment();
+    if (!paymentSuccess) {
+       return;
+    }
+    */
+
     try {
       const resp = await fetch("/api/payments/test-unlock", {
         method: "POST",
@@ -242,6 +251,14 @@ export default function AssessmentAndDashboard({
           analysis: latestResultRef.current || row.result,
           paid: true
         });
+
+        // Generate the report immediately
+        exportPdf({
+          userData,
+          answers: latestFdRef.current?.answers || row.answers || {},
+          result: latestResultRef.current || row.result || {},
+          iframeEl: iframeRef.current,
+        });
       }
     } catch (err) {
       console.error("Direct unlock failed:", err.message);
@@ -251,6 +268,16 @@ export default function AssessmentAndDashboard({
   }
 
   async function launchRazorpay() {
+    // Payment is temporarily disabled. Keep payment code in place but comment it out.
+    // Future Razorpay Flow
+    /*
+    const paymentSuccess = await verifyPayment();
+    if (!paymentSuccess) {
+       return;
+    }
+    */
+
+    /*
     if (!submissionId) {
       console.warn("launchRazorpay: submissionId not yet available");
       return;
@@ -319,6 +346,7 @@ export default function AssessmentAndDashboard({
       console.error("Razorpay launch failed:", err.message);
       setPayLoading(false);
     }
+    */
   }
 
   useEffect(() => {
@@ -415,7 +443,7 @@ export default function AssessmentAndDashboard({
               letterSpacing: "0.3px",
             }}
           >
-            {payLoading ? "Opening checkout…" : "🔓 Unlock Report & Downloads — ₹1"}
+            {payLoading ? "Opening report…" : "🔓 Unlock Full Report & Downloads"}
           </button>
         </div>
       )}
