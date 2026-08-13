@@ -215,11 +215,11 @@ export default function AssessmentAndDashboard({
     });
   }, [submissionId]);
 
+  // Payment gateway is temporarily disabled — unlocking is instant and
+  // free for now (re-enable by gating this behind a verified payment
+  // before calling onPaymentSuccess). The report must display immediately
+  // regardless of whether the backend/DB call below succeeds.
   async function handleDirectUnlock() {
-    if (!submissionId) {
-      console.warn("handleDirectUnlock: submissionId not yet available");
-      return;
-    }
     setPayLoading(true);
 
     // Future Razorpay Flow
@@ -230,40 +230,27 @@ export default function AssessmentAndDashboard({
     }
     */
 
-    try {
-      const resp = await fetch("/api/payments/test-unlock", {
+    // Optimistic, synchronous unlock — never blocked by a network call.
+    if (onPaymentSuccess) onPaymentSuccess();
+    postToIframe({ type: "INFOPACE_PAID_STATUS", paid: true });
+    postToIframe({
+      type: "INFOPACE_RENDER",
+      fd: latestFdRef.current,
+      analysis: latestResultRef.current,
+      paid: true,
+    });
+    setPayLoading(false);
+
+    // Best-effort persistence so the unlock survives a page refresh —
+    // failures here are logged only and never re-lock the report.
+    if (submissionId) {
+      fetch("/api/payments/test-unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ submissionId }),
+      }).catch((err) => {
+        console.warn("Unlock persistence failed (report stays unlocked locally):", err.message);
       });
-      if (!resp.ok) {
-        throw new Error(`Direct unlock failed: ${resp.statusText}`);
-      }
-
-      // Re-fetch submission details to get fresh paid status from Supabase
-      const row = await fetchSubmission(submissionId);
-      if (row && row.paid) {
-        if (onPaymentSuccess) onPaymentSuccess();
-        postToIframe({ type: "INFOPACE_PAID_STATUS", paid: true });
-        postToIframe({
-          type: "INFOPACE_RENDER",
-          fd: latestFdRef.current || { answers: row.answers },
-          analysis: latestResultRef.current || row.result,
-          paid: true
-        });
-
-        // Generate the report immediately
-        exportPdf({
-          userData,
-          answers: latestFdRef.current?.answers || row.answers || {},
-          result: latestResultRef.current || row.result || {},
-          iframeEl: iframeRef.current,
-        });
-      }
-    } catch (err) {
-      console.error("Direct unlock failed:", err.message);
-    } finally {
-      setPayLoading(false);
     }
   }
 
@@ -373,6 +360,13 @@ export default function AssessmentAndDashboard({
 
       if (event.data.type === "INFOPACE_EXPORT_PDF") {
         handleExportPdf();
+      }
+
+      // Sent by dashboard.html when the user clicks "Unlock Full Report".
+      // Payment gateway is disabled for now, so this just syncs the paid
+      // flag back to React state (the iframe has already unlocked itself).
+      if (event.data.type === "INFOPACE_UNLOCK") {
+        if (!paid) handleDirectUnlock();
       }
 
       if (event.data.type === "INFOPACE_RESET") {
