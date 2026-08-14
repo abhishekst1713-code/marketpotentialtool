@@ -5302,23 +5302,30 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
         s1: 'd1', s2: 'd2', s3: 'd3', s4: 'd4', s5: 'd5', s6: 'd4', s7: 'd2', s8: 'd6',
       };
 
-      const buckets = { d1: [], d2: [], d3: [], d4: [], d5: [], d6: [] };
+      const buckets = { d1: [], d2: [], d3: [], d4: [], d5: [], d6: [] }; // each item: {v, w}
 
       // The sector-specific question banks (aiQs.sections, populated when
       // the assessment form rendered) already carry the correct numeric
-      // value per option — ANSWER_SCORES below is a generic table that
-      // cannot cover every sector's option wording (e.g. Manufacturing's
-      // "10–20% below nearest competitor" isn't in it), so a text miss
-      // there is common, not the exception. Reading the real value from
-      // the live bank first is what stops every dimension from silently
-      // collapsing to the same flat default score.
-      function findLiveOptionValue(questionId, answerText) {
+      // value AND weight per question — ANSWER_SCORES below is a generic
+      // table that cannot cover every sector's option wording (e.g.
+      // Manufacturing's "10–20% below nearest competitor" isn't in it),
+      // so a text miss there is common, not the exception. Reading the
+      // real value from the live bank first is what stops every dimension
+      // from silently collapsing to the same flat default score.
+      //
+      // The weighting here (select: q.w||2, pills: 2, checks: v=4/w=1)
+      // exactly mirrors calcLive()'s live-preview dimScore() formula, so
+      // the score shown while filling the form and the score in the final
+      // report agree instead of drifting apart from two different formulas.
+      function findLiveOption(questionId, answerText) {
         if (!aiQs || !Array.isArray(aiQs.sections)) return null;
         for (const sec of aiQs.sections) {
           for (const q of (sec.questions || [])) {
             if (q.id !== questionId) continue;
             const opt = (q.options || []).find(o => o.t === answerText);
-            return opt ? opt.v : null;
+            if (!opt || opt.v == null) return null;
+            const w = q.type === 'select' ? (q.w || 2) : 2;
+            return { v: opt.v, w };
           }
         }
         return null;
@@ -5331,21 +5338,23 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
 
         const vals = Array.isArray(val) ? val : [val];
         vals.forEach(v => {
-          const liveScore = findLiveOptionValue(key, v);
-          if (liveScore != null) { buckets[dim].push(liveScore); return; }
+          const live = findLiveOption(key, v);
+          if (live) { buckets[dim].push(live); return; }
           const score = ANSWER_SCORES[v];
-          if (score) { buckets[dim].push(score); return; }
-          // checkboxes / unmatched text: moderate signal (no numeric value)
-          if (typeof v === 'string' && v.length > 2) buckets[dim].push(4);
+          if (score) { buckets[dim].push({ v: score, w: 2 }); return; }
+          // checkboxes / unmatched text: moderate positive signal, weight 1
+          // — matches calcLive's checkbox handling (v:4, w:1 per checked box)
+          if (typeof v === 'string' && v.length > 2) buckets[dim].push({ v: 4, w: 1 });
         });
       });
 
       const dimAvg = key => {
         const items = buckets[key];
         if (!items.length) return null;
-        const avg = items.reduce((a, b) => a + b, 0) / items.length; // 1.0–5.0
+        const totalW = items.reduce((s, i) => s + i.w, 0);
+        const weighted = items.reduce((s, i) => s + i.v * i.w, 0);
+        const avg = weighted / totalW; // 1.0–5.0
         const linear = (avg - 1) / 4 * 100; // 0–100
-        // Stretch: floor at 40, push high scores up
         // Full range: low answers score low, high answers score high
         return Math.min(100, Math.max(0, Math.round(linear < 25 ? linear * 0.8 : linear > 75 ? 75 + (linear - 75) * 1.0 : linear)));
       };
@@ -8122,7 +8131,7 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
               <tr>
                 <td style="font-weight:600; color:var(--b900);">${name}</td>
                 <td class="mono" style="text-align:right;">${r.rev ?? "—"}</td>
-                <td class="mono" style="text-align:right;">${r.pct != null ? r.pct + "%" : "—"}</td>
+                <td class="mono" style="text-align:right;">${r.pct != null ? String(r.pct).trim().replace(/%+$/, '') + "%" : "—"}</td>
               </tr>
             `).join("");
         })()}
