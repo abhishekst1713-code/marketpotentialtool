@@ -174,9 +174,8 @@ export default function AssessmentAndDashboard({
       if (dataUrl && dataUrl.length > 100) {
         console.log("📸 Dashboard screenshot captured, length:", dataUrl.length, "chars");
         onScreenshot(dataUrl);
-        // Screenshot saved → nudge the user toward the full report and send charts capture
+        // Screenshot saved → nudge the user toward the full report
         postToIframe({ type: "INFOPACE_SHOW_REPORT_TIP" });
-        postToIframe({ type: "INFOPACE_CHARTS_CAPTURE", chartImageSrc: dataUrl });
       } else {
         console.warn("⚠️ Screenshot capture produced empty result");
       }

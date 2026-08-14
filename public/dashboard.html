@@ -5304,6 +5304,26 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
 
       const buckets = { d1: [], d2: [], d3: [], d4: [], d5: [], d6: [] };
 
+      // The sector-specific question banks (aiQs.sections, populated when
+      // the assessment form rendered) already carry the correct numeric
+      // value per option — ANSWER_SCORES below is a generic table that
+      // cannot cover every sector's option wording (e.g. Manufacturing's
+      // "10–20% below nearest competitor" isn't in it), so a text miss
+      // there is common, not the exception. Reading the real value from
+      // the live bank first is what stops every dimension from silently
+      // collapsing to the same flat default score.
+      function findLiveOptionValue(questionId, answerText) {
+        if (!aiQs || !Array.isArray(aiQs.sections)) return null;
+        for (const sec of aiQs.sections) {
+          for (const q of (sec.questions || [])) {
+            if (q.id !== questionId) continue;
+            const opt = (q.options || []).find(o => o.t === answerText);
+            return opt ? opt.v : null;
+          }
+        }
+        return null;
+      }
+
       Object.entries(fd.answers || {}).forEach(([key, val]) => {
         const prefix = key.slice(0, 2); // e.g. "f1", "f2", "s3"
         const dim = DIM_MAP[prefix];
@@ -5311,10 +5331,12 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
 
         const vals = Array.isArray(val) ? val : [val];
         vals.forEach(v => {
+          const liveScore = findLiveOptionValue(key, v);
+          if (liveScore != null) { buckets[dim].push(liveScore); return; }
           const score = ANSWER_SCORES[v];
-          if (score) buckets[dim].push(score);
-          // checkboxes: each checked item is a moderate signal (no numeric value)
-          else if (typeof v === 'string' && v.length > 2) buckets[dim].push(4);
+          if (score) { buckets[dim].push(score); return; }
+          // checkboxes / unmatched text: moderate signal (no numeric value)
+          if (typeof v === 'string' && v.length > 2) buckets[dim].push(4);
         });
       });
 
@@ -6940,17 +6962,6 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
         }
       }
 
-      // Receive captured chart image dynamically
-      if (event.data.type === 'INFOPACE_CHARTS_CAPTURE') {
-        window.chartImageSrc = event.data.chartImageSrc;
-        const vr = document.getElementById('viewReport');
-        if (vr && vr.style.display !== 'none') {
-          buildReport();
-        }
-      }
-
-
-
       // Receive: pre-fill user details from React onboarding into the form
       if (event.data.type === 'INFOPACE_PREFILL') {
         const u = event.data.userData;
@@ -7171,7 +7182,6 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
       try {
         const fd = dd.fd, a = dd.a;
         const org = fd.organization || 'Your Organisation';
-        const chartImageSrc = window.chartImageSrc || null;
         const sector = fd.sectorCode || '';
         const geo = fd.geoCode || '';
         const score = a.overallScore ?? 0;
@@ -8025,7 +8035,7 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
     ${localPageHeader("16")}
     <div class="eyebrow">Section Ten</div>
     <div class="pg-title">Financial Opportunity &amp; Sizing</div>
-    <div class="pg-sub">Target market potential sizing and live charts snapshot.</div>
+    <div class="pg-sub">Target market potential sizing — TAM, SAM, SOM and estimated share breakdown.</div>
     
     <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:4mm; margin-top:4mm; margin-bottom:5mm;">
       <div style="background:var(--b50); padding:3.5mm; border-radius:6px; text-align:center;">
@@ -8046,13 +8056,42 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
       </div>
     </div>
 
-    <!-- Live chart capture rendering direct from parent parameter if available -->
-    <div style="flex:1; display:flex; justify-content:center; align-items:center; background:#f8fafc; border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative; min-height:100mm;">
-      ${chartImageSrc 
-        ? `<img src="${chartImageSrc}" style="width:100%; height:100%; object-fit:contain; max-height:100mm;" alt="Market Charts"/>`
-        : `<div style="font-size:12px; color:var(--inkL);">Charts snapshot image capture (html2canvas) placeholder.</div>`
-      }
+    <h3 class="rpt-sec" style="margin-top:0;">Market Sizing Funnel</h3>
+    <div style="display:flex; flex-direction:column; gap:4mm; margin-bottom:5mm;">
+      ${[
+        { label: 'TAM — Total Addressable Market', val: tam, pct: 100, color: '#1a56db' },
+        { label: 'SAM — Serviceable Addressable Market', val: sam, pct: tam ? Math.round(sam / tam * 100) : 0, color: '#06b6d4' },
+        { label: 'SOM — Serviceable Obtainable Market', val: som, pct: tam ? Math.round(som / tam * 100) : 0, color: '#10b981' },
+      ].map(row => `
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:1.5mm;">
+            <span style="font-weight:600; color:var(--b900);">${row.label}</span>
+            <span class="mono" style="font-weight:700; color:${row.color};">₹${Math.round(row.val)}Cr${row.pct < 100 ? ` · ${row.pct}% of TAM` : ''}</span>
+          </div>
+          <div style="height:7mm; background:var(--b50); border-radius:4px; overflow:hidden;">
+            <div style="height:100%; width:${Math.max(row.pct, 3)}%; background:${row.color}; border-radius:4px;"></div>
+          </div>
+        </div>
+      `).join("")}
     </div>
+
+    <h3 class="rpt-sec">Estimated Market Share Breakdown</h3>
+    <table class="summary-table">
+      <thead><tr><th>Player</th><th style="text-align:right;">Est. Share</th><th style="text-align:right;">Est. Revenue</th></tr></thead>
+      <tbody>
+        ${(() => {
+          const shares = a.marketShare || [];
+          if (!shares.length) return `<tr><td colspan="3" style="color:var(--inkL);">Market share breakdown not available for this submission.</td></tr>`;
+          return shares.slice(0, 6).map(s => `
+            <tr>
+              <td style="font-weight:600; color:var(--b900);">${s.name || "—"}</td>
+              <td class="mono" style="text-align:right;">${s.pct != null ? s.pct + "%" : "—"}</td>
+              <td class="mono" style="text-align:right;">${s.val || "—"}</td>
+            </tr>
+          `).join("");
+        })()}
+      </tbody>
+    </table>
     ${localPageFooter()}
   </div>
 
