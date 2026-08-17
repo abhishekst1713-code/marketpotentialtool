@@ -128,6 +128,11 @@ export default function AssessmentAndDashboard({
       // ── Capture screenshot after dashboard renders (with delay for animations) ──
       captureAndUpload();
 
+      // ── Archive the full report PDF to Supabase for every completed test,
+      // not just when the user clicks Unlock (unlock re-archives too, which
+      // is a harmless no-op overwrite of the same content). ──
+      generateAndUploadReportPdf();
+
     } catch (err) {
       console.warn("Gemini analysis failed, falling back to offline:", err.message);
 
@@ -144,6 +149,8 @@ export default function AssessmentAndDashboard({
         postToIframe({ type: "INFOPACE_RENDER", fd, analysis: null, paid: paid });
         // Capture screenshot even for offline analysis
         captureAndUpload();
+        // Archive the report PDF for this test too, same as the success path
+        generateAndUploadReportPdf();
       }, 600);
     }
   }

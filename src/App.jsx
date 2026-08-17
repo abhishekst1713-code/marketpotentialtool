@@ -89,7 +89,11 @@ export default function App() {
   const [submissionId, setSubmissionId] = useState(null); // holds Supabase row UUID
   const [paid, setPaid] = useState(false); // true once payment is verified
 
-  // ── On mount: detect ?payment= and ?session= in the URL or restore from localStorage ──
+  // ── On mount: detect ?payment=&session= in the URL (redirect back from the
+  // payment gateway) and restore that specific submission. This is the ONLY
+  // case that auto-restores a submission — a plain refresh/reopen with no
+  // URL params always lands on a fresh onboarding "home page" instead of
+  // jumping back into a previously completed report. ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentResult = params.get("payment");   // "success" | "failed"
@@ -101,7 +105,7 @@ export default function App() {
       window.history.replaceState({}, "", cleanUrl);
     }
 
-    const sessionId = sessionIdFromUrl || localStorage.getItem("infopace_session_sid");
+    const sessionId = sessionIdFromUrl;
     if (!sessionId) return;
 
     fetchSubmission(sessionId).then((row) => {
