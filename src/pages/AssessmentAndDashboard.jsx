@@ -90,8 +90,6 @@ export default function AssessmentAndDashboard({
   const latestFdRef = useRef(null);
   const [payLoading, setPayLoading] = useState(false);
   const [analysisReady, setAnalysisReady] = useState(false);
-  const [reportAccessUrl, setReportAccessUrl] = useState(null);
-  const [linkCopied, setLinkCopied] = useState(false);
 
   function postToIframe(msg) {
     iframeRef.current?.contentWindow?.postMessage(msg, "*");
@@ -99,9 +97,6 @@ export default function AssessmentAndDashboard({
 
   async function handleSubmit(fd) {
     latestFdRef.current = fd;
-    // Clear any previous test's report link until this test's own PDF archives
-    setReportAccessUrl(null);
-    setLinkCopied(false);
 
     // Drive loader steps
     for (const s of LOADER_STEPS) {
@@ -293,10 +288,6 @@ export default function AssessmentAndDashboard({
         result: latestResultRef.current || {},
       });
       await uploadReportPdf(submissionId, dataUrl);
-
-      // Surface this test's standalone access link (screenshot + report PDF,
-      // reachable independent of this session) once the PDF is archived.
-      setReportAccessUrl(`${window.location.origin}/r/${submissionId}`);
     } catch (err) {
       console.warn("⚠️ Report PDF generation/upload failed:", err.message);
     }
@@ -426,17 +417,6 @@ export default function AssessmentAndDashboard({
     return () => window.removeEventListener("message", handleMessage);
   }, [userData, submissionId, paid]);
 
-  async function handleCopyReportLink() {
-    if (!reportAccessUrl) return;
-    try {
-      await navigator.clipboard.writeText(reportAccessUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (err) {
-      console.warn("Copy report link failed:", err.message);
-    }
-  }
-
   function handleExportPdf() {
     if (!paid) {
       handleDirectUnlock();
@@ -519,47 +499,6 @@ export default function AssessmentAndDashboard({
           }}
         >
           ✅ Full Report Unlocked
-        </div>
-      )}
-
-      {/* ── Per-test report access link — appears once this test's screenshot
-          + report PDF have been archived to Supabase, independent of unlock ── */}
-      {reportAccessUrl && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            left: "24px",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 14px",
-            borderRadius: "12px",
-            background: "#fff",
-            border: "1px solid #D6DFED",
-            boxShadow: "0 4px 16px rgba(8,21,42,0.12)",
-            fontSize: "12px",
-            color: "#08152A",
-            fontFamily: "'IBM Plex Sans', sans-serif",
-          }}
-        >
-          <span style={{ fontWeight: 600 }}>🔗 Report link saved</span>
-          <button
-            onClick={handleCopyReportLink}
-            style={{
-              padding: "6px 12px",
-              borderRadius: "8px",
-              border: "none",
-              background: linkCopied ? "#10b981" : "#00338D",
-              color: "#fff",
-              fontSize: "12px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            {linkCopied ? "Copied!" : "Copy Link"}
-          </button>
         </div>
       )}
     </div>

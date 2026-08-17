@@ -2088,6 +2088,34 @@
       .dash {
         height: auto;
       }
+
+      /* #viewReport is given position:fixed/height:100vh/overflow-y:auto as an
+         INLINE style by switchView() in JS. Printing a fixed, overflow:auto
+         box only captures whatever fits in that one on-screen viewport —
+         it silently drops every page beyond the first. Overriding it back
+         to normal document flow here (with !important, to beat the inline
+         style) lets the browser lay out and paginate the full multi-page
+         report across as many printed sheets as it actually needs. */
+      html,
+      body {
+        height: auto !important;
+        overflow: visible !important;
+      }
+
+      #outputSidebar,
+      #viewCharts {
+        display: none !important;
+      }
+
+      #viewReport {
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+      }
     }
 
     /* ══ SIDEBAR STYLES ══ */
@@ -6006,6 +6034,47 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
     }
 
     /* ══════════════════════════════════════════════════════
+       DATA FRESHNESS BANNER — tells the user when they're looking at
+       preliminary (offline) numbers, and when live data replaces them.
+       Without this, the 12s offline-fallback render below gets silently
+       swapped out whenever the real (possibly much slower) Gemini call
+       finally resolves, which looks like the dashboard just changed its
+       numbers for no reason.
+    ══════════════════════════════════════════════════════ */
+    function showDataFreshnessBanner(msg, kind) {
+      let el = document.getElementById('dataFreshnessBanner');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'dataFreshnessBanner';
+        el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10000;padding:10px 20px;border-radius:10px;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(15,30,60,0.18);transition:opacity 0.3s ease;';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      if (kind === 'pending') {
+        el.style.background = '#fffbeb';
+        el.style.color = '#92400e';
+        el.style.border = '1px solid #fde68a';
+      } else {
+        el.style.background = '#ecfdf5';
+        el.style.color = '#065f46';
+        el.style.border = '1px solid #6ee7b7';
+      }
+      el.style.display = 'block';
+      el.style.opacity = '1';
+      clearTimeout(window._dataFreshnessTimer);
+      if (kind === 'updated') {
+        window._dataFreshnessTimer = setTimeout(() => {
+          el.style.opacity = '0';
+          setTimeout(() => { if (el) el.style.display = 'none'; }, 300);
+        }, 4000);
+      }
+    }
+    function hideDataFreshnessBanner() {
+      const el = document.getElementById('dataFreshnessBanner');
+      if (el) el.style.display = 'none';
+    }
+
+    /* ══════════════════════════════════════════════════════
        RENDER DASHBOARD — exact market_dashboard_fixed style
     ══════════════════════════════════════════════════════ */
     function renderDash(fd, a) {
@@ -6945,6 +7014,18 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
           ? analysis : offlineAnalysis(fd);
         renderDash(fd, finalAnalysis);
 
+        // If the 12s failsafe already rendered preliminary offline numbers,
+        // tell the user this render just replaced them (or, if it's still
+        // not live data, just clear the "preliminary" banner quietly).
+        if (window._offlineFallbackUsed) {
+          window._offlineFallbackUsed = false;
+          if (finalAnalysis && finalAnalysis.realTimeInsight) {
+            showDataFreshnessBanner('✅ Live market data loaded — figures just updated.', 'updated');
+          } else {
+            hideDataFreshnessBanner();
+          }
+        }
+
         // Re-evaluate current view to respect the new unlocked status
         const vr = document.getElementById('viewReport');
         if (vr && vr.style.display !== 'none') {
@@ -7025,7 +7106,9 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
           const loader = document.getElementById('loaderShell');
           if (loader && loader.style.display !== 'none') {
             console.warn('INFOPACE_RENDER not received — falling back to offline analysis');
+            window._offlineFallbackUsed = true;
             renderDash(fd, offlineAnalysis(fd));
+            showDataFreshnessBanner('⏳ Showing preliminary estimates — refreshing with live market data…', 'pending');
           }
         }, 12000);
       } else {
