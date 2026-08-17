@@ -7025,6 +7025,11 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
           const loader = document.getElementById('loaderShell');
           if (loader && loader.style.display !== 'none') {
             console.warn('INFOPACE_RENDER not received — falling back to offline analysis');
+            // Tell React we gave up waiting on it and rendered ourselves —
+            // otherwise the floating Unlock button (gated on React's own,
+            // possibly much slower, Gemini call) stays hidden long after
+            // the dashboard is already showing on screen.
+            window.parent.postMessage({ type: 'INFOPACE_FALLBACK_RENDERED' }, '*');
             renderDash(fd, offlineAnalysis(fd));
           }
         }, 12000);

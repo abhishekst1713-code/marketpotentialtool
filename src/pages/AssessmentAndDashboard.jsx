@@ -371,6 +371,16 @@ export default function AssessmentAndDashboard({
       if (event.data.type === "INFOPACE_RESET") {
         onRestart();
       }
+
+      // dashboard.html gave up waiting on our (possibly slow) Gemini call
+      // after 12s and rendered its own offline analysis directly — show
+      // the unlock button now instead of leaving it hidden behind our
+      // still-pending fetch. If that fetch later succeeds, handleSubmit's
+      // own INFOPACE_RENDER will still land and quietly upgrade the
+      // content; analysisReady is already true so the button doesn't move.
+      if (event.data.type === "INFOPACE_FALLBACK_RENDERED") {
+        setAnalysisReady(true);
+      }
     }
 
     window.addEventListener("message", handleMessage);
