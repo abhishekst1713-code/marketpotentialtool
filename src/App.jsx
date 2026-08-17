@@ -70,14 +70,9 @@
 import { useState, useRef, useEffect } from "react";
 import OnboardingForm from "./pages/OnboardingForm";
 import AssessmentAndDashboard from "./pages/AssessmentAndDashboard";
-import AuthPage from "./pages/AuthPage";
 import { saveOnboarding, saveResult, saveScreenshotDataUrl, fetchSubmission } from "./lib/db";
-import { getUser, onAuthChange, signOut } from "./lib/auth";
 
 // ── Flow:
-//   0. App gates on Supabase auth — signed out users see AuthPage, and
-//      a refresh re-checks the session instead of falling through to
-//      the assessment form.
 //   1. User fills OnboardingForm → onComplete(userData) fires
 //      → saveOnboarding() inserts row into Supabase, returns submissionId
 //   2. User completes dashboard questions → AI generates result
@@ -90,18 +85,9 @@ import { getUser, onAuthChange, signOut } from "./lib/auth";
 // ──────────────────────────────────────────────────────────────────
 
 export default function App() {
-  // undefined = still checking Supabase for an existing session, null = signed out
-  const [authUser, setAuthUser] = useState(undefined);
   const [userData, setUserData] = useState(null);
   const [submissionId, setSubmissionId] = useState(null); // holds Supabase row UUID
   const [paid, setPaid] = useState(false); // true once payment is verified
-
-  // ── On mount: check for an existing Supabase session, and keep it in sync ──
-  useEffect(() => {
-    getUser().then(setAuthUser).catch(() => setAuthUser(null));
-    const { data: listener } = onAuthChange(setAuthUser);
-    return () => listener?.subscription?.unsubscribe();
-  }, []);
 
   // ── On mount: detect ?payment= and ?session= in the URL or restore from localStorage ──
   useEffect(() => {
@@ -214,53 +200,19 @@ export default function App() {
     setPaid(false);
   }
 
-  if (authUser === undefined) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#627289", fontFamily: "sans-serif", fontSize: 14 }}>
-        Loading…
-      </div>
-    );
-  }
-
-  if (!authUser) {
-    return <AuthPage onAuth={setAuthUser} />;
-  }
-
-  const signOutButton = (
-    <button
-      onClick={() => signOut()}
-      style={{
-        position: "fixed", top: 12, right: 12, zIndex: 10000,
-        padding: "6px 12px", borderRadius: 8, border: "1px solid #D6DFED",
-        background: "#fff", color: "#627289", fontSize: 12, fontWeight: 600,
-        cursor: "pointer",
-      }}
-    >
-      Sign out
-    </button>
-  );
-
   if (userData) {
     return (
-      <>
-        <AssessmentAndDashboard
-          userData={userData}
-          submissionId={submissionId}
-          paid={paid}
-          onResult={handleResult}
-          onScreenshot={handleScreenshot}
-          onPaymentSuccess={handlePaymentSuccess}
-          onRestart={handleRestart}
-        />
-        {signOutButton}
-      </>
+      <AssessmentAndDashboard
+        userData={userData}
+        submissionId={submissionId}
+        paid={paid}
+        onResult={handleResult}
+        onScreenshot={handleScreenshot}
+        onPaymentSuccess={handlePaymentSuccess}
+        onRestart={handleRestart}
+      />
     );
   }
 
-  return (
-    <>
-      <OnboardingForm onComplete={handleOnboardingComplete} user={authUser} />
-      {signOutButton}
-    </>
-  );
+  return <OnboardingForm onComplete={handleOnboardingComplete} user={null} />;
 }
