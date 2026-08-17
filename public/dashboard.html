@@ -7073,6 +7073,10 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
       if (!isCharts) {
         if (vr) {
           vr.style.cssText = 'position:fixed;left:64px;top:0;width:calc(100vw - 64px);height:100vh;overflow-y:auto;display:block;background:#f0f4ff;z-index:4;';
+          // Reset scroll before repopulating — otherwise reopening the report
+          // while this container is still scrolled down from a previous
+          // visit shows the bottom of the new content instead of the top.
+          vr.scrollTop = 0;
         }
         if (window._unlocked) {
           buildReport();
@@ -8354,6 +8358,14 @@ NOTE: These are GLOBAL sector market sizes per region — NOT the product revenu
 
         reportEl.innerHTML = html;
 
+        // The scroll container (#viewReport) keeps its scroll position across
+        // rebuilds — without this, reopening/rebuilding the report while it
+        // was previously scrolled down lands the user on the last page
+        // instead of the top, making the (already-loaded) content above look
+        // like it's still missing.
+        const scrollHost = document.getElementById('viewReport');
+        if (scrollHost) scrollHost.scrollTop = 0;
+        reportEl.scrollTop = 0;
 
       } catch (err) {
         console.error('buildReport crashed:', err);
