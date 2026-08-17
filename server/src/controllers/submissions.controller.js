@@ -5,6 +5,7 @@ const {
   insertSubmission,
   updateSubmissionResult,
   updateSubmissionScreenshot,
+  updateSubmissionReportPdf,
   getSubmissionById,
 } = require("../services/supabase.service");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -33,6 +34,15 @@ const updateScreenshot = asyncHandler(async (req, res) => {
   res.json({ id, status: "screenshot_saved" });
 });
 
+// PATCH /api/submissions/:id/report-pdf
+const updateReportPdf = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { dataUrl } = req.body;
+
+  const { reportPdfUrl } = await updateSubmissionReportPdf(id, dataUrl);
+  res.json({ id, status: "report_pdf_saved", reportPdfUrl });
+});
+
 // GET /api/submissions/:id
 const getById = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -41,4 +51,4 @@ const getById = asyncHandler(async (req, res) => {
   res.json(submission);
 });
 
-module.exports = { create, updateResult, updateScreenshot, getById };
+module.exports = { create, updateResult, updateScreenshot, updateReportPdf, getById };

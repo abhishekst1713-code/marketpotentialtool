@@ -1,8 +1,8 @@
 // src/pages/AssessmentAndDashboard.jsx
 import { useEffect, useRef, useState } from "react";
 import { generateAnalysis } from "../lib/gemini";
-import { exportPdf } from "../lib/exportPdf";
-import { createRazorpayOrder, fetchSubmission } from "../lib/db";
+import { exportPdf, generateReportPdfDataUrl } from "../lib/exportPdf";
+import { createRazorpayOrder, fetchSubmission, uploadReportPdf } from "../lib/db";
 
 // ── Load html2canvas from CDN once ─────────────────────────────────
 function loadHtml2Canvas() {
@@ -113,11 +113,17 @@ export default function AssessmentAndDashboard({
         onResult(fd.answers || {}, result);
       }
 
+      // ── Mark analysis as ready so the "Unlock Full Report" button appears,
+      // and yield one frame so the browser actually paints it BEFORE the
+      // iframe starts its heavy synchronous Chart.js/map rendering work.
+      // Without this yield, the button's DOM update was committed but sat
+      // unpainted behind the iframe's blocking render, making it look like
+      // it "loaded late" even though React had already scheduled it. ──
+      setAnalysisReady(true);
+      await new Promise((r) => requestAnimationFrame(r));
+
       // ── Send full analysis to iframe directly with paid status ──
       postToIframe({ type: "INFOPACE_RENDER", fd, analysis: result, paid: paid });
-
-      // ── Mark analysis as ready so the Pay Now button appears ──
-      setAnalysisReady(true);
 
       // ── Capture screenshot after dashboard renders (with delay for animations) ──
       captureAndUpload();
@@ -132,9 +138,10 @@ export default function AssessmentAndDashboard({
         onResult(fd.answers || {}, {});
       }
 
-      setTimeout(() => {
-        postToIframe({ type: "INFOPACE_RENDER", fd, analysis: null, paid: paid });
+      setTimeout(async () => {
         setAnalysisReady(true); // also show Pay button for offline analysis
+        await new Promise((r) => requestAnimationFrame(r));
+        postToIframe({ type: "INFOPACE_RENDER", fd, analysis: null, paid: paid });
         // Capture screenshot even for offline analysis
         captureAndUpload();
       }, 600);
@@ -199,15 +206,20 @@ export default function AssessmentAndDashboard({
     if (!submissionId) return;
 
     fetchSubmission(submissionId).then((row) => {
-      if (row && row.answers && row.result) {
+      // NOTE: the DB column is `analysis_json` (see updateSubmissionResult in
+      // supabase.service.js) — there is no `result` column. Reading `row.result`
+      // was always undefined, which silently broke restore-on-refresh: the
+      // iframe would fall back to its default "About" assessment tab instead
+      // of jumping straight to the generated dashboard/report.
+      if (row && row.answers && row.analysis_json) {
         latestFdRef.current = { answers: row.answers };
-        latestResultRef.current = row.result;
+        latestResultRef.current = row.analysis_json;
         setAnalysisReady(true);
 
         postToIframe({
           type: "INFOPACE_RENDER",
           fd: { answers: row.answers },
-          analysis: row.result,
+          analysis: row.analysis_json,
           paid: paid
         });
       }
@@ -250,6 +262,27 @@ export default function AssessmentAndDashboard({
       }).catch((err) => {
         console.warn("Unlock persistence failed (report stays unlocked locally):", err.message);
       });
+    }
+
+    // Generate the full PDF report and archive it to Supabase Storage so
+    // every unlock/test run leaves a stored copy — best-effort, never blocks
+    // or re-locks the report if it fails.
+    generateAndUploadReportPdf();
+  }
+
+  // ── Renders the PDF off-screen and stores it in Supabase, mirroring the
+  // dashboard screenshot capture above. Fire-and-forget on every unlock. ──
+  async function generateAndUploadReportPdf() {
+    if (!submissionId) return;
+    try {
+      const dataUrl = await generateReportPdfDataUrl({
+        userData,
+        answers: latestFdRef.current?.answers || {},
+        result: latestResultRef.current || {},
+      });
+      await uploadReportPdf(submissionId, dataUrl);
+    } catch (err) {
+      console.warn("⚠️ Report PDF generation/upload failed:", err.message);
     }
   }
 

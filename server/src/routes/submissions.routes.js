@@ -8,6 +8,7 @@ const {
   create,
   updateResult,
   updateScreenshot,
+  updateReportPdf,
   getById,
 } = require("../controllers/submissions.controller");
 
@@ -99,6 +100,18 @@ const screenshotSchema = z.object({
     ),
 });
 
+// Report PDF data URL: must start with data:application/pdf;base64, and be ≤ 15MB
+const MAX_REPORT_PDF_SIZE = 15 * 1024 * 1024; // 15MB in characters (base64 is ~4/3x raw)
+const reportPdfSchema = z.object({
+  dataUrl: z
+    .string()
+    .regex(/^data:application\/pdf;base64,/, "dataUrl must be a valid base64 data:application/pdf URI")
+    .refine(
+      (val) => val.length <= MAX_REPORT_PDF_SIZE,
+      `Report PDF data URL must be ≤ 15MB`
+    ),
+});
+
 // ── Routes ─────────────────────────────────────────────────────────
 
 // POST /api/submissions
@@ -109,6 +122,9 @@ router.patch("/:id/result", validateUuidParam, validate(updateResultSchema), upd
 
 // PATCH /api/submissions/:id/screenshot
 router.patch("/:id/screenshot", validateUuidParam, validate(screenshotSchema), updateScreenshot);
+
+// PATCH /api/submissions/:id/report-pdf
+router.patch("/:id/report-pdf", validateUuidParam, validate(reportPdfSchema), updateReportPdf);
 
 // GET /api/submissions/:id
 router.get("/:id", validateUuidParam, getById);

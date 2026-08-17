@@ -36,8 +36,8 @@ app.use(
   })
 );
 
-// ── Body parsing — 6MB limit for base64 screenshots ───────────────
-app.use(express.json({ limit: "6mb" }));
+// ── Body parsing — 20MB limit to fit base64 screenshots + PDF reports ──
+app.use(express.json({ limit: "20mb" }));
 
 // ── Request logging ───────────────────────────────────────────────
 app.use(requestLogger);

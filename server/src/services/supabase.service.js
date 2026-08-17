@@ -180,6 +180,85 @@ async function updateSubmissionScreenshot(id, dataUrl) {
 }
 
 /**
+ * Upload the exported PDF report to Supabase Storage and save its public URL.
+ * Bucket: "reports" (auto-created if missing).
+ * File path: <submissionId>.pdf
+ * @returns {{ id: string, reportPdfUrl: string }}
+ */
+async function updateSubmissionReportPdf(id, dataUrl) {
+  // Check existence
+  const { data: existing, error: fetchError } = await supabase
+    .from("submissions")
+    .select("id")
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !existing) {
+    const err = new Error("Submission not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // ── Decode base64 data URL → Buffer ──────────────────────────────
+  // Format: data:application/pdf;base64,JVBERi0...
+  const match = dataUrl.match(/^data:application\/pdf;base64,(.+)$/i);
+  if (!match) {
+    const err = new Error("Invalid PDF data URL format");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const buffer = Buffer.from(match[1], "base64");
+  const filePath = `${id}.pdf`;
+
+  // ── Ensure the "reports" bucket exists ───────────────────────────
+  const { data: buckets } = await supabase.storage.listBuckets();
+  const bucketExists = buckets?.some((b) => b.name === "reports");
+  if (!bucketExists) {
+    const { error: createErr } = await supabase.storage.createBucket("reports", {
+      public: true,
+      fileSizeLimit: 10 * 1024 * 1024, // 10MB
+    });
+    if (createErr && !createErr.message.includes("already exists")) {
+      console.error("Failed to create reports bucket:", createErr.message);
+    }
+  }
+
+  // ── Upload to Supabase Storage ───────────────────────────────────
+  const { error: uploadError } = await supabase.storage
+    .from("reports")
+    .upload(filePath, buffer, {
+      contentType: "application/pdf",
+      upsert: true, // overwrite if re-uploading (e.g. re-unlocking a test)
+    });
+
+  if (uploadError) {
+    const err = new Error(`Report PDF upload failed: ${uploadError.message}`);
+    err.statusCode = 500;
+    throw err;
+  }
+
+  // ── Get the public URL ───────────────────────────────────────────
+  const { data: urlData } = supabase.storage.from("reports").getPublicUrl(filePath);
+  const publicUrl = urlData?.publicUrl || null;
+
+  // ── Save the public URL to the database ──────────────────────────
+  const { error: updateError } = await supabase
+    .from("submissions")
+    .update({ report_pdf_url: publicUrl })
+    .eq("id", id);
+
+  if (updateError) {
+    const err = new Error(`Supabase report PDF URL update failed: ${updateError.message}`);
+    err.statusCode = 500;
+    throw err;
+  }
+
+  console.log(`  📄 Report PDF uploaded: ${filePath} → ${publicUrl}`);
+  return { id, reportPdfUrl: publicUrl };
+}
+
+/**
  * Fetch a single submission by UUID.
  * @returns {object} The full submission row.
  */
@@ -317,6 +396,7 @@ module.exports = {
   insertSubmission,
   updateSubmissionResult,
   updateSubmissionScreenshot,
+  updateSubmissionReportPdf,
   getSubmissionById,
   uploadReportToStorage,
   insertReportAccess,

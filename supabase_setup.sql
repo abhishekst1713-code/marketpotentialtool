@@ -60,6 +60,9 @@ create table if not exists public.submissions (
   -- ── Screenshot URL (stored in Supabase Storage) ─────────────
   screenshot_url  text,       -- public URL of captured dashboard image
 
+  -- ── Report PDF URL (stored in Supabase Storage) ─────────────
+  report_pdf_url  text,       -- public URL of the exported PDF report
+
   -- ── Status tracking ─────────────────────────────────────────
   status          text        default 'onboarding_complete',
   -- 'onboarding_complete' = form filled, assessment not yet done

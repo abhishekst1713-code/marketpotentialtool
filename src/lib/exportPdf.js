@@ -336,7 +336,9 @@ function createPage(pageNo, eyebrow, title, sub, content) {
 }
 
 
-export async function exportPdf({ userData, answers, result, iframeEl }) {
+// ── Builds the full 18-page report HTML string (shared by the print-window
+// export and the headless PDF-capture export below) ────────────────────────
+function buildReportHtml({ userData, answers, result }) {
   const org = userData.organization || "Unnamed Venture";
   const sector = userData.sector || "Not specified";
   const geo = userData.geography || "India";
@@ -742,6 +744,13 @@ export async function exportPdf({ userData, answers, result, iframeEl }) {
 </body>
 </html>`;
 
+  return html;
+}
+
+// ── User-facing export: opens a print-ready window so the user can Save as PDF ──
+export async function exportPdf({ userData, answers, result, iframeEl }) {
+  const html = buildReportHtml({ userData, answers, result });
+
   const win = window.open("", "_blank");
   if (!win) {
     alert("Please allow pop-ups to export the PDF.");
@@ -751,4 +760,83 @@ export async function exportPdf({ userData, answers, result, iframeEl }) {
   win.document.close();
   win.focus();
   setTimeout(() => win.print(), 1200);
+}
+
+// ── Load html2canvas / jsPDF from CDN once (mirrors the loader pattern in
+// AssessmentAndDashboard.jsx used for the screenshot capture) ──────────────
+function loadScriptOnce(src, checkGlobal) {
+  return new Promise((resolve, reject) => {
+    if (checkGlobal()) { resolve(checkGlobal()); return; }
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => resolve(checkGlobal());
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+function loadHtml2Canvas() {
+  return loadScriptOnce(
+    "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+    () => window.html2canvas
+  );
+}
+
+function loadJsPdf() {
+  return loadScriptOnce(
+    "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+    () => window.jspdf && window.jspdf.jsPDF
+  );
+}
+
+// ── Headless PDF generation: renders the same report HTML off-screen,
+// rasterizes each page with html2canvas, and stitches the pages into a
+// real multi-page A4 PDF with jsPDF. Returns a base64 data URI so callers
+// can both trigger a download and upload the bytes to a backend/storage. ──
+export async function generateReportPdfDataUrl({ userData, answers, result }) {
+  const html = buildReportHtml({ userData, answers, result });
+
+  const [html2canvas, jsPDF] = await Promise.all([loadHtml2Canvas(), loadJsPdf()]);
+
+  // Render off-screen (not display:none — hidden elements aren't laid out,
+  // which html2canvas needs) at a fixed width wide enough for the report's
+  // 210mm page CSS to size itself correctly.
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:900px;height:1200px;border:none;visibility:hidden;";
+  document.body.appendChild(iframe);
+
+  try {
+    await new Promise((resolve, reject) => {
+      iframe.onload = resolve;
+      iframe.onerror = () => reject(new Error("Report iframe failed to load"));
+      iframe.srcdoc = html;
+    });
+
+    // Give web fonts / the base64 logo image a moment to finish painting.
+    await new Promise((r) => setTimeout(r, 700));
+
+    const pageEls = iframe.contentDocument.querySelectorAll(".page, .wp-page");
+    if (!pageEls.length) {
+      throw new Error("No report pages found to capture");
+    }
+
+    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+
+    for (let i = 0; i < pageEls.length; i++) {
+      const canvas = await html2canvas(pageEls[i], {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      if (i > 0) doc.addPage();
+      doc.addImage(imgData, "JPEG", 0, 0, 210, 297);
+    }
+
+    return doc.output("datauristring");
+  } finally {
+    document.body.removeChild(iframe);
+  }
 }

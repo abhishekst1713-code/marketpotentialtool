@@ -77,6 +77,34 @@ export async function saveScreenshotDataUrl(submissionId, dataUrl) {
   }
 }
 
+// ── Phase 4: Upload the exported PDF report as base64 data URL ───
+export async function uploadReportPdf(submissionId, dataUrl) {
+  if (!submissionId || !dataUrl) {
+    console.warn("⚠️ uploadReportPdf: missing id or dataUrl");
+    return null;
+  }
+  try {
+    const resp = await fetch(`${API_BASE}/${submissionId}/report-pdf`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataUrl }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      console.error("❌ uploadReportPdf error:", err.error || resp.statusText);
+      return null;
+    }
+
+    const data = await resp.json();
+    console.log("✅ Report PDF saved:", data.reportPdfUrl);
+    return data;
+  } catch (err) {
+    console.error("❌ uploadReportPdf exception:", err.message);
+    return null;
+  }
+}
+
 // ── Legacy export (keeps old references working) ──────────────────
 export async function saveSubmission({ userData, answers, result }) {
   const id = await saveOnboarding(userData);
