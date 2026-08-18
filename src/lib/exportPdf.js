@@ -789,60 +789,80 @@ function loadJsPdf() {
   );
 }
 
-// ── Headless PDF generation: renders the same report HTML off-screen,
-// rasterizes each page with html2canvas, and stitches the pages into a
-// real multi-page A4 PDF with jsPDF. Returns a base64 data URI so callers
-// can both trigger a download and upload the bytes to a backend/storage. ──
-export async function generateReportPdfDataUrl({ userData, answers, result }) {
-  const html = buildReportHtml({ userData, answers, result });
+// ── Rasterizes a list of already-rendered ".page" elements with html2canvas
+// and stitches them into a real multi-page A4 PDF with jsPDF. Shared by
+// generateLiveReportPdfDataUrl() below. Returns a base64 data URI. ──
+async function capturePagesToPdfDataUrl(pageEls, html2canvas, jsPDF) {
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
 
+  for (let i = 0; i < pageEls.length; i++) {
+    const canvas = await html2canvas(pageEls[i], {
+      useCORS: true,
+      allowTaint: true,
+      scale: 2,
+      backgroundColor: "#ffffff",
+      logging: false,
+    });
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+    if (i > 0) doc.addPage();
+    doc.addImage(imgData, "JPEG", 0, 0, 210, 297);
+  }
+
+  const dataUri = doc.output("datauristring");
+  // jsPDF's "datauristring" output embeds a filename segment —
+  // "data:application/pdf;filename=generated.pdf;base64,..." — instead of
+  // the plain "data:application/pdf;base64,..." format. The backend's
+  // upload validation expects the plain format, so every report PDF
+  // archive was failing with a 400 "Validation failed" error before this
+  // normalization, even though generation itself succeeded.
+  return dataUri.replace(/^data:application\/pdf;filename=[^;]*;base64,/, "data:application/pdf;base64,");
+}
+
+// ── Archives the ACTUAL live report (dashboard.html's own Report view,
+// same-origin) instead of a separate hand-built template. Opens a hidden,
+// invisible copy of dashboard.html, drives it directly with this test's
+// real fd/analysis (same-origin access — no postMessage round-trip
+// needed), and captures whatever it renders — guaranteeing the archived
+// PDF is a pixel-for-pixel copy of what the user actually sees. ──
+export async function generateLiveReportPdfDataUrl({ fd, analysis }) {
   const [html2canvas, jsPDF] = await Promise.all([loadHtml2Canvas(), loadJsPdf()]);
 
-  // Render off-screen (not display:none — hidden elements aren't laid out,
-  // which html2canvas needs) at a fixed width wide enough for the report's
-  // 210mm page CSS to size itself correctly.
   const iframe = document.createElement("iframe");
-  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:900px;height:1200px;border:none;visibility:hidden;";
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:1400px;height:1000px;border:none;visibility:hidden;";
   document.body.appendChild(iframe);
 
   try {
     await new Promise((resolve, reject) => {
       iframe.onload = resolve;
-      iframe.onerror = () => reject(new Error("Report iframe failed to load"));
-      iframe.srcdoc = html;
+      iframe.onerror = () => reject(new Error("dashboard.html failed to load for archiving"));
+      iframe.src = "/dashboard.html?v=1.0.2";
     });
 
-    // Give web fonts / the base64 logo image a moment to finish painting.
+    const win = iframe.contentWindow;
+    if (!win || typeof win.renderDash !== "function" || typeof win.switchView !== "function") {
+      throw new Error("dashboard.html did not expose renderDash/switchView for archiving");
+    }
+
+    // Mirror dashboard.html's own INFOPACE_RENDER handler: fall back to its
+    // offline analysis when no real analysis is available, same as the
+    // live report does.
+    const finalAnalysis = (analysis && typeof analysis === "object" && Object.keys(analysis).length > 0)
+      ? analysis
+      : win.offlineAnalysis(fd);
+
+    win._unlocked = true; // archive the full report, never the paywall gate
+    win.renderDash(fd, finalAnalysis);
+    win.switchView("report"); // builds #reportContent via the live buildReport()
+
+    // Let fonts / the base64 logo / layout settle before capturing.
     await new Promise((r) => setTimeout(r, 700));
 
-    const pageEls = iframe.contentDocument.querySelectorAll(".page, .wp-page");
+    const pageEls = iframe.contentDocument.querySelectorAll("#reportContent .page");
     if (!pageEls.length) {
       throw new Error("No report pages found to capture");
     }
 
-    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-
-    for (let i = 0; i < pageEls.length; i++) {
-      const canvas = await html2canvas(pageEls[i], {
-        useCORS: true,
-        allowTaint: true,
-        scale: 2,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-      if (i > 0) doc.addPage();
-      doc.addImage(imgData, "JPEG", 0, 0, 210, 297);
-    }
-
-    const dataUri = doc.output("datauristring");
-    // jsPDF's "datauristring" output embeds a filename segment —
-    // "data:application/pdf;filename=generated.pdf;base64,..." — instead of
-    // the plain "data:application/pdf;base64,..." format. The backend's
-    // upload validation expects the plain format, so every report PDF
-    // archive was failing with a 400 "Validation failed" error before this
-    // normalization, even though generation itself succeeded.
-    return dataUri.replace(/^data:application\/pdf;filename=[^;]*;base64,/, "data:application/pdf;base64,");
+    return await capturePagesToPdfDataUrl(pageEls, html2canvas, jsPDF);
   } finally {
     document.body.removeChild(iframe);
   }

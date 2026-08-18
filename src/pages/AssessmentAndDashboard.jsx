@@ -1,7 +1,7 @@
 // src/pages/AssessmentAndDashboard.jsx
 import { useEffect, useRef, useState } from "react";
 import { generateAnalysis } from "../lib/gemini";
-import { exportPdf, generateReportPdfDataUrl } from "../lib/exportPdf";
+import { exportPdf, generateLiveReportPdfDataUrl } from "../lib/exportPdf";
 import { createRazorpayOrder, fetchSubmission, uploadReportPdf } from "../lib/db";
 
 // ── Load html2canvas from CDN once ─────────────────────────────────
@@ -277,15 +277,16 @@ export default function AssessmentAndDashboard({
     generateAndUploadReportPdf();
   }
 
-  // ── Renders the PDF off-screen and stores it in Supabase, mirroring the
-  // dashboard screenshot capture above. Fire-and-forget on every unlock. ──
+  // ── Archives the ACTUAL live report (same fd/analysis this test's real
+  // dashboard.html report was built from) and stores it in Supabase,
+  // mirroring the dashboard screenshot capture above. Fire-and-forget on
+  // every completed test. ──
   async function generateAndUploadReportPdf() {
     if (!submissionId) return;
     try {
-      const dataUrl = await generateReportPdfDataUrl({
-        userData,
-        answers: latestFdRef.current?.answers || {},
-        result: latestResultRef.current || {},
+      const dataUrl = await generateLiveReportPdfDataUrl({
+        fd: latestFdRef.current,
+        analysis: latestResultRef.current,
       });
       await uploadReportPdf(submissionId, dataUrl);
     } catch (err) {
