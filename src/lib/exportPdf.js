@@ -854,6 +854,26 @@ export async function generateLiveReportPdfDataUrl({ fd, analysis }) {
     win.renderDash(fd, finalAnalysis);
     win.switchView("report"); // builds #reportContent via the live buildReport()
 
+    // switchView() leaves #viewReport as position:fixed/height:100vh/
+    // overflow-y:auto (the same styling that caused the browser's native
+    // print to drop every page beyond the first, fixed earlier with a
+    // @media print override). That fix only applies to real print jobs —
+    // html2canvas never sees print CSS, so screenshotting individual pages
+    // inside this fixed, scroll-clipped box was still silently dropping
+    // pages at both ends (html2canvas miscalculates element positions
+    // inside a position:fixed ancestor taller than its own viewport).
+    // Force the same "normal document flow" override here, directly, so
+    // every page has real, un-clipped layout before it's captured.
+    const viewReportEl = iframe.contentDocument.getElementById("viewReport");
+    if (viewReportEl) {
+      viewReportEl.style.position = "static";
+      viewReportEl.style.left = "auto";
+      viewReportEl.style.top = "auto";
+      viewReportEl.style.width = "auto";
+      viewReportEl.style.height = "auto";
+      viewReportEl.style.overflow = "visible";
+    }
+
     // Let fonts / the base64 logo / layout settle before capturing.
     await new Promise((r) => setTimeout(r, 700));
 
