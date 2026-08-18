@@ -835,7 +835,14 @@ export async function generateReportPdfDataUrl({ userData, answers, result }) {
       doc.addImage(imgData, "JPEG", 0, 0, 210, 297);
     }
 
-    return doc.output("datauristring");
+    const dataUri = doc.output("datauristring");
+    // jsPDF's "datauristring" output embeds a filename segment —
+    // "data:application/pdf;filename=generated.pdf;base64,..." — instead of
+    // the plain "data:application/pdf;base64,..." format. The backend's
+    // upload validation expects the plain format, so every report PDF
+    // archive was failing with a 400 "Validation failed" error before this
+    // normalization, even though generation itself succeeded.
+    return dataUri.replace(/^data:application\/pdf;filename=[^;]*;base64,/, "data:application/pdf;base64,");
   } finally {
     document.body.removeChild(iframe);
   }

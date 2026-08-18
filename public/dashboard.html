@@ -2291,7 +2291,17 @@
   #reportContent .serif{font-family:'Playfair Display',serif;}
 
   #reportContent .page{ width:210mm; min-height:297mm; margin:20px auto; background:#fff; box-shadow:0 8px 40px rgba(15,30,60,0.12); position:relative; padding:15mm 16mm 12mm; display:flex; flex-direction:column; page-break-after:always; font-family:'Inter',sans-serif; color:var(--ink); }
-  @media print{ #reportContent .page{margin:0; box-shadow:none;} }
+  @media print{
+    /* min-height:297mm (set above for on-screen display) is a MINIMUM, not
+       a cap — any section whose real content is taller than one A4 sheet
+       grows past it, and the browser then prints that oversized box across
+       multiple physical sheets. Since .pg-ftr is pinned to the bottom of
+       the flex column via margin-top:auto, it lands alone on a trailing,
+       otherwise-empty sheet — which is exactly the "blank page after every
+       real page" pattern this fixes. Dropping min-height for print lets
+       each .page take only the height its content actually needs. */
+    #reportContent .page{ margin:0; box-shadow:none; min-height:auto; }
+  }
 
   #reportContent .pg-hdr{display:flex; justify-content:space-between; align-items:center; padding-bottom:9px; margin-bottom:20px;}
   #reportContent .brand{font-size:11.6px; font-weight:700; letter-spacing:.14em; color:var(--b900); text-transform:uppercase;}
